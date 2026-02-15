@@ -7,19 +7,27 @@ import whisper
 
 def transcribe(audio_path: str, model_name: str = "base") -> None:
     model = whisper.load_model(model_name)
-    result = model.transcribe(audio_path, language="ja", verbose=False)
+    result = model.transcribe(audio_path, language="ja", verbose=False, word_timestamps=True)
 
     subtitles = []
+    words = []
     for seg in result.get("segments", []):
         subtitles.append({
             "start": round(seg["start"], 2),
             "end": round(seg["end"], 2),
             "text": seg["text"].strip()
         })
+        for word in seg.get("words", []):
+            words.append({
+                "word": word["word"].strip(),
+                "start": round(word["start"], 2),
+                "end": round(word["end"], 2)
+            })
 
     output = {
         "text": result.get("text", ""),
-        "subtitles": subtitles
+        "subtitles": subtitles,
+        "words": words
     }
     print(json.dumps(output, ensure_ascii=False))
 

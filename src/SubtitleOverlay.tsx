@@ -207,6 +207,7 @@ const SingleSubtitle: React.FC<{
                     textAlign: "center",
                     lineHeight: 1.4,
                     textShadow: "0 2px 4px rgba(0,0,0,0.5)",
+                    whiteSpace: "nowrap",
                 }}
             >
                 {displayText}

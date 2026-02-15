@@ -8,7 +8,7 @@ import type { AudioTrack, EditSettings } from "./Composition";
 const FPS = 30;
 
 const defaultProps: CompositionProps = {
-  videoFileName: "IMG_8322.MOV",
+  videoFileName: "IMG_8326.MOV",
   subtitles: [],
 };
 
@@ -24,7 +24,19 @@ export const RemotionRoot: React.FC = () => {
         height={1080}
         defaultProps={defaultProps}
         calculateMetadata={async ({ props }) => {
-          const src = staticFile(props.videoFileName);
+          // 現在のプロジェクトファイルから動画ファイル名を取得
+          let videoFileName = props.videoFileName;
+          try {
+            const projectRes = await fetch(staticFile("current_project.json"));
+            if (projectRes.ok) {
+              const project = await projectRes.json();
+              if (project.videoFileName) {
+                videoFileName = project.videoFileName;
+              }
+            }
+          } catch { }
+
+          const src = staticFile(videoFileName);
           const metadata = await getVideoMetadata(src);
 
           let subtitles: SubtitleSegment[] = props.subtitles;
@@ -32,7 +44,7 @@ export const RemotionRoot: React.FC = () => {
           let audioTracks: AudioTrack[] | undefined = props.audioTracks;
           let editSettings: EditSettings | undefined = props.editSettings;
 
-          const baseName = props.videoFileName.replace(/\.[^.]+$/, "");
+          const baseName = videoFileName.replace(/\.[^.]+$/, "");
 
           // 字幕データ
           if (!subtitles || subtitles.length === 0) {
@@ -84,10 +96,11 @@ export const RemotionRoot: React.FC = () => {
             width: Math.round(metadata.width),
             height: Math.round(metadata.height),
             fps: FPS,
-            props: { ...props, subtitles, subtitleStyle, audioTracks, editSettings },
+            props: { ...props, videoFileName, subtitles, subtitleStyle, audioTracks, editSettings },
           };
         }}
       />
     </>
   );
 };
+
