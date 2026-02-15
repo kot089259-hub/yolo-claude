@@ -5,3 +5,9 @@ dist
 
 # Ignore the output video from Git but not videos you import into src/.
 out
+
+# Video files
+public/*.MOV
+public/*.mov
+public/*.mp4
+output/
