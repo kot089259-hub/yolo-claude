@@ -1,0 +1,2773 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>自動字幕ツール</title>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700;900&family=Noto+Serif+JP:wght@400;700&family=M+PLUS+1p:wght@400;700&family=M+PLUS+Rounded+1c:wght@400;700&family=Kosugi+Maru&family=Sawarabi+Gothic&family=Sawarabi+Mincho&family=Zen+Kaku+Gothic+New:wght@400;700&family=Zen+Maru+Gothic:wght@400;700&family=Zen+Old+Mincho:wght@400;700&family=Shippori+Mincho:wght@400;700&family=Kiwi+Maru:wght@400;700&family=Hachi+Maru+Pop&family=Yusei+Magic&family=Dela+Gothic+One&family=Reggae+One&family=RocknRoll+One&family=Stick&family=DotGothic16&family=Potta+One&family=Rampart+One&family=Train+One&family=Roboto:wght@400;700&family=Open+Sans:wght@400;700&family=Montserrat:wght@400;700&family=Lato:wght@400;700&family=Inter:wght@400;700&display=swap"
+    rel="stylesheet">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Noto Sans JP', sans-serif;
+      background: #0a0a0f;
+      color: #e0e0e0;
+      min-height: 100vh;
+    }
+
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 40px 20px;
+    }
+
+    h1 {
+      text-align: center;
+      font-size: 32px;
+      font-weight: 900;
+      margin-bottom: 8px;
+      background: linear-gradient(135deg, #6366f1, #a855f7, #ec4899);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .subtitle {
+      text-align: center;
+      color: #888;
+      margin-bottom: 40px;
+      font-size: 14px;
+    }
+
+    /* Upload Area */
+    .upload-area {
+      border: 2px dashed #333;
+      border-radius: 16px;
+      padding: 60px 40px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      background: #111118;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .upload-area:hover,
+    .upload-area.dragover {
+      border-color: #6366f1;
+      background: #15152a;
+      transform: translateY(-2px);
+      box-shadow: 0 8px 30px rgba(99, 102, 241, 0.15);
+    }
+
+    .upload-icon {
+      font-size: 48px;
+      margin-bottom: 16px;
+    }
+
+    .upload-text {
+      font-size: 18px;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+
+    .upload-hint {
+      font-size: 13px;
+      color: #666;
+    }
+
+    .upload-area input[type="file"] {
+      display: none;
+    }
+
+    /* Progress */
+    .progress-section {
+      margin-top: 32px;
+      display: none;
+    }
+
+    .progress-section.active {
+      display: block;
+    }
+
+    .step {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 16px;
+      border-radius: 12px;
+      margin-bottom: 8px;
+      background: #111118;
+      transition: all 0.3s ease;
+    }
+
+    .step.active {
+      background: #15152a;
+      border: 1px solid #6366f133;
+    }
+
+    .step.done {
+      background: #0f1f15;
+      border: 1px solid #22c55e33;
+    }
+
+    .step.error {
+      background: #1f0f0f;
+      border: 1px solid #ef444433;
+    }
+
+    .step-icon {
+      font-size: 24px;
+      width: 36px;
+      text-align: center;
+    }
+
+    .step-text {
+      flex: 1;
+    }
+
+    .step-title {
+      font-weight: 700;
+      font-size: 15px;
+    }
+
+    .step-detail {
+      font-size: 12px;
+      color: #888;
+      margin-top: 2px;
+    }
+
+    .spinner {
+      display: inline-block;
+      width: 24px;
+      height: 24px;
+      border: 3px solid #333;
+      border-top: 3px solid #6366f1;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    /* Result */
+    .result-section {
+      margin-top: 32px;
+      display: none;
+    }
+
+    .result-section.active {
+      display: block;
+    }
+
+    .result-card {
+      background: #111118;
+      border-radius: 16px;
+      padding: 24px;
+      border: 1px solid #222;
+    }
+
+    .result-title {
+      font-size: 18px;
+      font-weight: 700;
+      margin-bottom: 16px;
+      color: #a855f7;
+    }
+
+    .subtitle-list {
+      max-height: 500px;
+      overflow-y: auto;
+    }
+
+    .subtitle-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 0;
+      border-bottom: 1px solid #1a1a2a;
+      font-size: 14px;
+    }
+
+    .subtitle-item .sub-index {
+      color: #555;
+      font-size: 12px;
+      min-width: 24px;
+      text-align: center;
+    }
+
+    .subtitle-item input[type="text"] {
+      flex: 1;
+      min-width: 0;
+      background: #1a1a2a;
+      border: 1px solid #333;
+      border-radius: 6px;
+      color: #e0e0e0;
+      padding: 8px 12px;
+      font-size: 14px;
+      font-family: 'Noto Sans JP', sans-serif;
+      transition: border-color 0.2s;
+    }
+
+    .subtitle-item input[type="text"]:focus {
+      outline: none;
+      border-color: #6366f1;
+    }
+
+    .subtitle-item input[type="number"] {
+      width: 56px;
+      background: #1a1a2a;
+      border: 1px solid #333;
+      border-radius: 6px;
+      color: #6366f1;
+      padding: 8px 4px;
+      font-size: 12px;
+      font-family: monospace;
+      text-align: center;
+    }
+
+    .subtitle-item input[type="number"]:focus {
+      outline: none;
+      border-color: #6366f1;
+    }
+
+    .seg-pos {
+      display: flex;
+      align-items: center;
+      gap: 2px;
+    }
+
+    .seg-pos-label {
+      font-size: 10px;
+      color: #555;
+    }
+
+    .seg-pos input {
+      width: 40px !important;
+      font-size: 11px !important;
+      padding: 6px 2px !important;
+      color: #a855f7 !important;
+    }
+
+    .btn-style-toggle {
+      background: #1a1a2a;
+      color: #ec4899;
+    }
+
+    .btn-style-toggle:hover {
+      background: #2a1a2a;
+    }
+
+    .seg-style-row {
+      display: none;
+      grid-column: 1 / -1;
+      background: #0d0d15;
+      border: 1px solid #222;
+      border-radius: 8px;
+      padding: 10px 12px;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+      margin: -4px 0 4px 24px;
+    }
+
+    .seg-style-row.open {
+      display: flex;
+    }
+
+    .seg-style-row label {
+      font-size: 10px;
+      color: #666;
+      margin-right: 2px;
+    }
+
+    .seg-style-row select {
+      background: #1a1a2a;
+      border: 1px solid #333;
+      border-radius: 4px;
+      color: #e0e0e0;
+      padding: 4px 6px;
+      font-size: 11px;
+      max-width: 120px;
+    }
+
+    .seg-style-row input[type="number"] {
+      width: 45px;
+      background: #1a1a2a;
+      border: 1px solid #333;
+      border-radius: 4px;
+      color: #e0e0e0;
+      padding: 4px 4px;
+      font-size: 11px;
+      text-align: center;
+    }
+
+    .seg-style-row input[type="color"] {
+      width: 28px;
+      height: 28px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      background: transparent;
+      padding: 0;
+    }
+
+    .seg-style-row .seg-field {
+      display: flex;
+      align-items: center;
+      gap: 3px;
+    }
+
+    /* Audio Tracks */
+    .audio-card {
+      background: #111118;
+      border-radius: 16px;
+      padding: 24px;
+      border: 1px solid #222;
+      margin-top: 16px;
+    }
+
+    .audio-title {
+      font-size: 18px;
+      font-weight: 700;
+      margin-bottom: 16px;
+      color: #22c55e;
+    }
+
+    .audio-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 0;
+      border-bottom: 1px solid #1a1a2a;
+      font-size: 13px;
+    }
+
+    .audio-item .audio-name {
+      flex: 1;
+      color: #aaa;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .audio-item input[type="number"] {
+      width: 55px;
+      background: #1a1a2a;
+      border: 1px solid #333;
+      border-radius: 6px;
+      color: #22c55e;
+      padding: 6px 4px;
+      font-size: 12px;
+      font-family: monospace;
+      text-align: center;
+    }
+
+    .audio-item label {
+      font-size: 10px;
+      color: #666;
+    }
+
+    .audio-upload-btn {
+      background: #15152a;
+      color: #22c55e;
+      width: 100%;
+      height: 36px;
+      border-radius: 8px;
+      border: 1px dashed #333;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 700;
+      font-family: 'Noto Sans JP', sans-serif;
+      margin-top: 8px;
+      transition: all 0.2s;
+    }
+
+    .audio-upload-btn:hover {
+      border-color: #22c55e;
+      background: #1a2a1a;
+    }
+
+    /* Edit Section */
+    .edit-card {
+      background: #111118;
+      border-radius: 16px;
+      padding: 24px;
+      border: 1px solid #222;
+      margin-top: 16px;
+    }
+
+    .edit-title {
+      font-size: 18px;
+      font-weight: 700;
+      margin-bottom: 16px;
+      color: #f59e0b;
+    }
+
+    .edit-section {
+      margin-bottom: 20px;
+    }
+
+    .edit-section-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: #ccc;
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .edit-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .edit-field {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .edit-field label {
+      font-size: 12px;
+      color: #888;
+    }
+
+    .edit-field input[type="number"],
+    .edit-field select {
+      background: #1a1a2a;
+      border: 1px solid #333;
+      border-radius: 6px;
+      color: #f59e0b;
+      padding: 8px 8px;
+      font-size: 13px;
+      font-family: monospace;
+      width: 70px;
+      text-align: center;
+    }
+
+    .edit-field input:focus,
+    .edit-field select:focus {
+      outline: none;
+      border-color: #f59e0b;
+    }
+
+    .edit-hint {
+      font-size: 11px;
+      color: #555;
+      margin-top: 4px;
+    }
+
+    .merge-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 0;
+      border-bottom: 1px solid #1a1a2a;
+      font-size: 13px;
+    }
+
+    .merge-item .merge-name {
+      flex: 1;
+      color: #aaa;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .merge-upload-btn {
+      background: #15152a;
+      color: #f59e0b;
+      width: 100%;
+      height: 36px;
+      border-radius: 8px;
+      border: 1px dashed #333;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 700;
+      font-family: 'Noto Sans JP', sans-serif;
+      margin-top: 8px;
+      transition: all 0.2s;
+    }
+
+    .merge-upload-btn:hover {
+      border-color: #f59e0b;
+      background: #2a2a1a;
+    }
+
+    .speed-presets {
+      display: flex;
+      gap: 4px;
+      margin-top: 6px;
+    }
+
+    .speed-preset-btn {
+      padding: 6px 12px;
+      border: 1px solid #333;
+      border-radius: 6px;
+      background: #1a1a2a;
+      color: #888;
+      font-size: 12px;
+      cursor: pointer;
+      font-family: monospace;
+      transition: all 0.2s;
+    }
+
+    .speed-preset-btn:hover {
+      border-color: #f59e0b;
+      color: #f59e0b;
+    }
+
+    .speed-preset-btn.active {
+      background: #f59e0b;
+      color: #000;
+      border-color: #f59e0b;
+    }
+
+    /* Visual Effects */
+    .visual-card {
+      background: #111118;
+      border-radius: 16px;
+      padding: 24px;
+      border: 1px solid #222;
+      margin-top: 16px;
+    }
+
+    .visual-title {
+      font-size: 18px;
+      font-weight: 700;
+      margin-bottom: 16px;
+    }
+
+    .visual-title.overlay {
+      color: #a855f7;
+    }
+
+    .visual-title.filter {
+      color: #06b6d4;
+    }
+
+    .visual-title.kenburns {
+      color: #f472b6;
+    }
+
+    .filter-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .filter-item {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .filter-item label {
+      font-size: 11px;
+      color: #888;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .filter-item label span {
+      color: #06b6d4;
+      font-family: monospace;
+    }
+
+    .filter-item input[type="range"] {
+      width: 100%;
+      accent-color: #06b6d4;
+      height: 6px;
+    }
+
+    .overlay-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 0;
+      border-bottom: 1px solid #1a1a2a;
+      font-size: 12px;
+      flex-wrap: wrap;
+    }
+
+    .overlay-item .overlay-name {
+      color: #a855f7;
+      min-width: 80px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .overlay-item input[type="number"],
+    .overlay-item select {
+      width: 50px;
+      background: #1a1a2a;
+      border: 1px solid #333;
+      border-radius: 4px;
+      color: #e0e0e0;
+      padding: 4px 3px;
+      font-size: 11px;
+      font-family: monospace;
+      text-align: center;
+    }
+
+    .overlay-item label {
+      font-size: 10px;
+      color: #666;
+    }
+
+    .overlay-upload-btn {
+      background: #15152a;
+      color: #a855f7;
+      width: 100%;
+      height: 36px;
+      border-radius: 8px;
+      border: 1px dashed #333;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 700;
+      font-family: 'Noto Sans JP', sans-serif;
+      margin-top: 8px;
+      transition: all 0.2s;
+    }
+
+    .overlay-upload-btn:hover {
+      border-color: #a855f7;
+      background: #1a1a2a;
+    }
+
+    .kb-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .kb-field {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .kb-field label {
+      font-size: 12px;
+      color: #888;
+      min-width: 40px;
+    }
+
+    .kb-field input {
+      width: 60px;
+      background: #1a1a2a;
+      border: 1px solid #333;
+      border-radius: 6px;
+      color: #f472b6;
+      padding: 8px 6px;
+      font-size: 13px;
+      font-family: monospace;
+      text-align: center;
+    }
+
+    .kb-field input:focus {
+      outline: none;
+      border-color: #f472b6;
+    }
+
+    .btn-reset {
+      background: #1a1a2a;
+      color: #888;
+      border: 1px solid #333;
+      padding: 6px 14px;
+      border-radius: 6px;
+      font-size: 12px;
+      cursor: pointer;
+      font-family: 'Noto Sans JP', sans-serif;
+      transition: all 0.2s;
+    }
+
+    .btn-reset:hover {
+      color: #06b6d4;
+      border-color: #06b6d4;
+    }
+
+    /* Telop */
+    .telop-card {
+      background: #111118;
+      border-radius: 16px;
+      padding: 24px;
+      border: 1px solid #222;
+      margin-top: 16px;
+    }
+
+    .telop-title {
+      font-size: 18px;
+      font-weight: 700;
+      margin-bottom: 16px;
+      color: #facc15;
+    }
+
+    .telop-item {
+      background: #0d0d15;
+      border: 1px solid #222;
+      border-radius: 10px;
+      padding: 12px;
+      margin-bottom: 8px;
+    }
+
+    .telop-top {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .telop-top input[type="text"] {
+      flex: 1;
+      min-width: 120px;
+      background: #1a1a2a;
+      border: 1px solid #333;
+      border-radius: 6px;
+      color: #facc15;
+      padding: 8px 10px;
+      font-size: 14px;
+      font-family: 'Noto Sans JP', sans-serif;
+    }
+
+    .telop-top input[type="text"]:focus {
+      outline: none;
+      border-color: #facc15;
+    }
+
+    .telop-top input[type="number"] {
+      width: 55px;
+      background: #1a1a2a;
+      border: 1px solid #333;
+      border-radius: 6px;
+      color: #e0e0e0;
+      padding: 6px 4px;
+      font-size: 12px;
+      font-family: monospace;
+      text-align: center;
+    }
+
+    .telop-top label {
+      font-size: 10px;
+      color: #666;
+    }
+
+    .telop-style {
+      display: none;
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px solid #1a1a2a;
+      gap: 8px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .telop-style.open {
+      display: flex;
+    }
+
+    .telop-style select,
+    .telop-style input[type="number"] {
+      background: #1a1a2a;
+      border: 1px solid #333;
+      border-radius: 4px;
+      color: #e0e0e0;
+      padding: 4px 6px;
+      font-size: 11px;
+    }
+
+    .telop-style select {
+      max-width: 110px;
+    }
+
+    .telop-style input[type="number"] {
+      width: 40px;
+      text-align: center;
+    }
+
+    .telop-style input[type="color"] {
+      width: 28px;
+      height: 28px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      background: transparent;
+      padding: 0;
+    }
+
+    .telop-style label {
+      font-size: 10px;
+      color: #666;
+    }
+
+    .telop-style .tsf {
+      display: flex;
+      align-items: center;
+      gap: 3px;
+    }
+
+    .telop-add-btn {
+      background: #15152a;
+      color: #facc15;
+      width: 100%;
+      height: 40px;
+      border-radius: 8px;
+      border: 1px dashed #333;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 700;
+      font-family: 'Noto Sans JP', sans-serif;
+      transition: all 0.2s;
+    }
+
+    .telop-add-btn:hover {
+      border-color: #facc15;
+      background: #2a2a1a;
+    }
+
+    /* Export Section */
+    .export-card {
+      background: #111118;
+      border-radius: 16px;
+      padding: 24px;
+      border: 1px solid #222;
+      margin-top: 16px;
+    }
+
+    .export-title {
+      font-size: 18px;
+      font-weight: 700;
+      margin-bottom: 16px;
+      color: #ef4444;
+    }
+
+    .export-section {
+      margin-bottom: 20px;
+    }
+
+    .export-section-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: #ccc;
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .export-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .export-btn {
+      padding: 10px 20px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      font-family: 'Noto Sans JP', sans-serif;
+      transition: all 0.2s;
+      border: none;
+    }
+
+    .export-btn.render {
+      background: linear-gradient(135deg, #ef4444, #f97316);
+      color: white;
+    }
+
+    .export-btn.render:hover {
+      transform: scale(1.02);
+      box-shadow: 0 4px 15px rgba(239, 68, 68, 0.4);
+    }
+
+    .export-btn.render:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
+    }
+
+    .export-btn.sub {
+      background: #1a1a2a;
+      color: #22c55e;
+      border: 1px solid #333;
+    }
+
+    .export-btn.sub:hover {
+      border-color: #22c55e;
+    }
+
+    .export-btn.thumb {
+      background: #1a1a2a;
+      color: #a855f7;
+      border: 1px solid #333;
+    }
+
+    .export-btn.thumb:hover {
+      border-color: #a855f7;
+    }
+
+    .export-field input[type="number"] {
+      width: 65px;
+      background: #1a1a2a;
+      border: 1px solid #333;
+      border-radius: 6px;
+      color: #a855f7;
+      padding: 8px 8px;
+      font-size: 13px;
+      font-family: monospace;
+      text-align: center;
+    }
+
+    .export-field label {
+      font-size: 12px;
+      color: #888;
+    }
+
+    .export-field select {
+      background: #1a1a2a;
+      border: 1px solid #333;
+      border-radius: 6px;
+      color: #22c55e;
+      padding: 8px 12px;
+      font-size: 13px;
+    }
+
+    .export-field {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .render-status {
+      font-size: 13px;
+      color: #888;
+      margin-top: 8px;
+    }
+
+    .render-status.success {
+      color: #22c55e;
+    }
+
+    .render-status.error {
+      color: #ef4444;
+    }
+
+    .thumb-preview {
+      margin-top: 10px;
+      max-width: 320px;
+      border-radius: 8px;
+      overflow: hidden;
+      border: 1px solid #333;
+    }
+
+    .thumb-preview img {
+      width: 100%;
+      display: block;
+    }
+
+    .download-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      color: #22c55e;
+      font-size: 13px;
+      text-decoration: none;
+      margin-top: 6px;
+    }
+
+    .download-link:hover {
+      text-decoration: underline;
+    }
+
+    /* Utility Bar */
+    .utility-bar {
+      background: #111118;
+      border-radius: 16px;
+      padding: 16px 24px;
+      border: 1px solid #222;
+      margin-top: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .utility-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: #888;
+      margin-right: 8px;
+    }
+
+    .util-btn {
+      padding: 8px 14px;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      font-family: 'Noto Sans JP', sans-serif;
+      transition: all 0.2s;
+      border: 1px solid #333;
+      background: #1a1a2a;
+      color: #888;
+    }
+
+    .util-btn:hover {
+      color: #e0e0e0;
+      border-color: #555;
+    }
+
+    .util-btn:disabled {
+      opacity: 0.3;
+      cursor: not-allowed;
+    }
+
+    .util-btn.undo {
+      color: #60a5fa;
+    }
+
+    .util-btn.undo:hover {
+      border-color: #60a5fa;
+    }
+
+    .util-btn.redo {
+      color: #60a5fa;
+    }
+
+    .util-btn.redo:hover {
+      border-color: #60a5fa;
+    }
+
+    .util-btn.project-save {
+      color: #22c55e;
+    }
+
+    .util-btn.project-save:hover {
+      border-color: #22c55e;
+    }
+
+    .util-btn.project-load {
+      color: #f59e0b;
+    }
+
+    .util-btn.project-load:hover {
+      border-color: #f59e0b;
+    }
+
+    .util-btn.shortcut-help {
+      color: #a855f7;
+    }
+
+    .util-btn.shortcut-help:hover {
+      border-color: #a855f7;
+    }
+
+    .util-sep {
+      width: 1px;
+      height: 24px;
+      background: #333;
+      margin: 0 4px;
+    }
+
+    .undo-count {
+      font-size: 10px;
+      color: #555;
+      font-family: monospace;
+    }
+
+    .shortcut-panel {
+      display: none;
+      background: #111118;
+      border: 1px solid #333;
+      border-radius: 12px;
+      padding: 16px 20px;
+      margin-top: 8px;
+      font-size: 12px;
+    }
+
+    .shortcut-panel.open {
+      display: block;
+    }
+
+    .shortcut-panel table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    .shortcut-panel td {
+      padding: 4px 8px;
+      border-bottom: 1px solid #1a1a2a;
+    }
+
+    .shortcut-panel td:first-child {
+      color: #a855f7;
+      font-family: monospace;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .shortcut-panel td:last-child {
+      color: #888;
+    }
+
+    .time-sep {
+      color: #555;
+      font-size: 12px;
+    }
+
+    .btn-icon {
+      width: 32px;
+      height: 32px;
+      border-radius: 6px;
+      border: none;
+      cursor: pointer;
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+      flex-shrink: 0;
+    }
+
+    .btn-delete {
+      background: #2a1515;
+      color: #ef4444;
+    }
+
+    .btn-delete:hover {
+      background: #3a1515;
+    }
+
+    .btn-add {
+      background: #15152a;
+      color: #6366f1;
+      width: 100%;
+      height: 36px;
+      border-radius: 8px;
+      border: 1px dashed #333;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 700;
+      font-family: 'Noto Sans JP', sans-serif;
+      margin-top: 8px;
+      transition: all 0.2s;
+    }
+
+    .btn-add:hover {
+      border-color: #6366f1;
+      background: #1a1a3a;
+    }
+
+    .save-toast {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%) translateY(100px);
+      background: #22c55e;
+      color: #000;
+      padding: 12px 28px;
+      border-radius: 10px;
+      font-weight: 700;
+      font-size: 14px;
+      transition: transform 0.3s ease;
+      z-index: 100;
+    }
+
+    .save-toast.show {
+      transform: translateX(-50%) translateY(0);
+    }
+
+    .btn-save {
+      background: linear-gradient(135deg, #22c55e, #16a34a);
+      color: white;
+    }
+
+    .btn-save:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(34, 197, 94, 0.3);
+    }
+
+    .actions {
+      margin-top: 24px;
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+    }
+
+    .btn {
+      padding: 12px 28px;
+      border-radius: 10px;
+      border: none;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      font-family: 'Noto Sans JP', sans-serif;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #6366f1, #a855f7);
+      color: white;
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(99, 102, 241, 0.3);
+    }
+
+    .btn-secondary {
+      background: #222;
+      color: #ccc;
+    }
+
+    .btn-secondary:hover {
+      background: #333;
+    }
+
+    .error-msg {
+      color: #ef4444;
+      text-align: center;
+      margin-top: 16px;
+      font-size: 14px;
+    }
+
+    /* Video Preview */
+    .video-preview {
+      margin-top: 24px;
+      border-radius: 12px;
+      overflow: hidden;
+      background: #000;
+    }
+
+    .video-preview video {
+      width: 100%;
+      max-height: 400px;
+      display: block;
+    }
+
+    /* Style Settings */
+    .style-card {
+      background: #111118;
+      border-radius: 16px;
+      padding: 24px;
+      border: 1px solid #222;
+      margin-top: 16px;
+    }
+
+    .style-title {
+      font-size: 18px;
+      font-weight: 700;
+      margin-bottom: 16px;
+      color: #ec4899;
+    }
+
+    .style-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+
+    .style-field {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .style-field label {
+      font-size: 12px;
+      color: #888;
+      font-weight: 700;
+    }
+
+    .style-field select,
+    .style-field input[type="number"] {
+      background: #1a1a2a;
+      border: 1px solid #333;
+      border-radius: 8px;
+      color: #e0e0e0;
+      padding: 10px 12px;
+      font-size: 14px;
+      font-family: 'Noto Sans JP', sans-serif;
+    }
+
+    .style-field select:focus,
+    .style-field input[type="number"]:focus {
+      outline: none;
+      border-color: #6366f1;
+    }
+
+    .color-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .color-row input[type="color"] {
+      width: 40px;
+      height: 40px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      background: transparent;
+    }
+
+    .color-row .color-hex {
+      background: #1a1a2a;
+      border: 1px solid #333;
+      border-radius: 8px;
+      color: #e0e0e0;
+      padding: 10px 12px;
+      font-size: 14px;
+      font-family: monospace;
+      width: 100px;
+    }
+
+    .pos-buttons {
+      display: flex;
+      gap: 4px;
+    }
+
+    .pos-btn {
+      flex: 1;
+      padding: 10px 0;
+      border: 1px solid #333;
+      border-radius: 8px;
+      background: #1a1a2a;
+      color: #888;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      font-family: 'Noto Sans JP', sans-serif;
+      transition: all 0.2s;
+    }
+
+    .pos-btn.active {
+      background: #6366f1;
+      color: white;
+      border-color: #6366f1;
+    }
+
+    .pos-btn:hover:not(.active) {
+      border-color: #555;
+    }
+
+    .style-preview {
+      margin-top: 16px;
+      background: #000;
+      border-radius: 12px;
+      height: 100px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .style-preview-text {
+      padding: 8px 20px;
+      border-radius: 8px;
+      text-align: center;
+      transition: all 0.2s;
+    }
+
+    .toggle-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .toggle {
+      width: 44px;
+      height: 24px;
+      border-radius: 12px;
+      background: #333;
+      position: relative;
+      cursor: pointer;
+      transition: background 0.2s;
+      border: none;
+    }
+
+    .toggle.active {
+      background: #6366f1;
+    }
+
+    .toggle::after {
+      content: '';
+      position: absolute;
+      top: 3px;
+      left: 3px;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: white;
+      transition: transform 0.2s;
+    }
+
+    .toggle.active::after {
+      transform: translateX(20px);
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <h1>🎬 自動字幕ツール</h1>
+    <p class="subtitle">動画をアップロードすると、AIが自動で字幕をつけます</p>
+
+    <!-- Upload Area -->
+    <div class="upload-area" id="uploadArea" onclick="document.getElementById('fileInput').click()">
+      <div class="upload-icon">📁</div>
+      <div class="upload-text">動画をドラッグ&ドロップ</div>
+      <div class="upload-hint">またはクリックしてファイルを選択（.mp4, .mov, .webm）</div>
+      <input type="file" id="fileInput" accept="video/*">
+    </div>
+
+    <!-- Video Preview -->
+    <div class="video-preview" id="videoPreview" style="display:none">
+      <video id="previewVideo" controls></video>
+    </div>
+
+    <!-- Progress -->
+    <div class="progress-section" id="progressSection">
+      <div class="step" id="stepUpload">
+        <div class="step-icon">⬆️</div>
+        <div class="step-text">
+          <div class="step-title">アップロード中...</div>
+          <div class="step-detail" id="uploadDetail"></div>
+        </div>
+      </div>
+      <div class="step" id="stepExtract">
+        <div class="step-icon">🎵</div>
+        <div class="step-text">
+          <div class="step-title">音声を抽出中...</div>
+          <div class="step-detail">FFmpegで動画から音声を分離します</div>
+        </div>
+      </div>
+      <div class="step" id="stepTranscribe">
+        <div class="step-icon">🤖</div>
+        <div class="step-text">
+          <div class="step-title">AIで文字起こし中...</div>
+          <div class="step-detail">ローカルWhisperで音声認識します（初回はモデルのダウンロードに時間がかかります）</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Result -->
+    <div class="result-section" id="resultSection">
+      <div class="result-card">
+        <div class="result-title">📝 字幕編集</div>
+        <div class="subtitle-list" id="subtitleList"></div>
+        <button class="btn-add" onclick="addSubtitle()">＋ 字幕を追加</button>
+      </div>
+
+      <!-- Style Settings -->
+      <div class="style-card">
+        <div class="style-title">🎨 スタイル設定</div>
+        <div class="style-grid">
+          <div class="style-field" style="grid-column: 1 / -1">
+            <label>フォント</label>
+            <select id="styleFont" onchange="updateStyle()">
+              <optgroup label="— ゴシック体 —">
+                <option value="Noto Sans JP">Noto Sans JP</option>
+                <option value="M PLUS 1p">M PLUS 1p</option>
+                <option value="Zen Kaku Gothic New">Zen角ゴシック</option>
+                <option value="Sawarabi Gothic">さわらびゴシック</option>
+                <option value="DotGothic16">ドットゴシック16</option>
+              </optgroup>
+              <optgroup label="— 丸ゴシック体 —">
+                <option value="M PLUS Rounded 1c">M PLUS Rounded 1c</option>
+                <option value="Kosugi Maru">小杉丸ゴシック</option>
+                <option value="Zen Maru Gothic">Zen丸ゴシック</option>
+                <option value="Kiwi Maru">キウイ丸</option>
+              </optgroup>
+              <optgroup label="— 明朝体 —">
+                <option value="Noto Serif JP">Noto Serif JP</option>
+                <option value="Shippori Mincho">しっぽり明朝</option>
+                <option value="Zen Old Mincho">Zenオールド明朝</option>
+                <option value="Sawarabi Mincho">さわらび明朝</option>
+              </optgroup>
+              <optgroup label="— デザイン・装飾 —">
+                <option value="Dela Gothic One">デラゴシック</option>
+                <option value="Reggae One">レゲエ</option>
+                <option value="RocknRoll One">ロックンロール</option>
+                <option value="Stick">スティック</option>
+                <option value="Potta One">ポッタ</option>
+                <option value="Rampart One">ランパート</option>
+                <option value="Train One">トレイン</option>
+              </optgroup>
+              <optgroup label="— 手書き・ポップ —">
+                <option value="Hachi Maru Pop">はちまるポップ</option>
+                <option value="Yusei Magic">ユウセイマジック</option>
+              </optgroup>
+              <optgroup label="— 欧文フォント —">
+                <option value="Arial">Arial</option>
+                <option value="Helvetica">Helvetica</option>
+                <option value="Roboto">Roboto</option>
+                <option value="Open Sans">Open Sans</option>
+                <option value="Montserrat">Montserrat</option>
+                <option value="Lato">Lato</option>
+                <option value="Inter">Inter</option>
+                <option value="Georgia">Georgia</option>
+                <option value="Times New Roman">Times New Roman</option>
+                <option value="Courier New">Courier New</option>
+                <option value="Verdana">Verdana</option>
+                <option value="Impact">Impact</option>
+                <option value="Comic Sans MS">Comic Sans MS</option>
+              </optgroup>
+            </select>
+          </div>
+          <div class="style-field">
+            <label>サイズ (px)</label>
+            <input type="number" id="styleFontSize" value="42" min="16" max="120" onchange="updateStyle()">
+          </div>
+          <div class="style-field">
+            <label>太字</label>
+            <div class="toggle-row">
+              <button class="toggle active" id="styleBold"
+                onclick="this.classList.toggle('active'); updateStyle()"></button>
+              <span style="font-size:13px; color:#888" id="boldLabel">ON</span>
+            </div>
+          </div>
+          <div class="style-field">
+            <label>文字の色</label>
+            <div class="color-row">
+              <input type="color" id="styleFontColor" value="#ffffff" onchange="updateStyle()">
+              <input type="text" class="color-hex" id="styleFontColorHex" value="#ffffff"
+                onchange="document.getElementById('styleFontColor').value=this.value; updateStyle()">
+            </div>
+          </div>
+          <div class="style-field">
+            <label>背景の色</label>
+            <div class="color-row">
+              <input type="color" id="styleBgColor" value="#000000" onchange="updateStyle()">
+              <input type="text" class="color-hex" id="styleBgColorHex" value="#000000"
+                onchange="document.getElementById('styleBgColor').value=this.value; updateStyle()">
+            </div>
+          </div>
+          <div class="style-field">
+            <label>背景の透明度 (%)</label>
+            <input type="number" id="styleBgOpacity" value="75" min="0" max="100" step="5" onchange="updateStyle()">
+          </div>
+          <div class="style-field">
+            <label>デフォルト位置</label>
+            <div class="pos-buttons">
+              <button class="pos-btn" onclick="setPosition('top')">上</button>
+              <button class="pos-btn" onclick="setPosition('center')">中央</button>
+              <button class="pos-btn active" onclick="setPosition('bottom')">下</button>
+              <button class="pos-btn" onclick="setPosition('custom')">XY指定</button>
+            </div>
+          </div>
+          <div class="style-field" id="customPosField" style="display:none">
+            <label>カスタム位置 (X%, Y%)</label>
+            <div class="color-row">
+              <span style="color:#888; font-size:12px">X</span>
+              <input type="number" id="stylePosX" value="50" min="0" max="100" style="width:60px"
+                onchange="updateStyle()">
+              <span style="color:#888; font-size:12px">Y</span>
+              <input type="number" id="stylePosY" value="90" min="0" max="100" style="width:60px"
+                onchange="updateStyle()">
+            </div>
+          </div>
+        </div>
+        <div class="style-preview" id="stylePreview">
+          <div class="style-preview-text" id="stylePreviewText">サンプル字幕テキスト</div>
+        </div>
+      </div>
+
+      <!-- Animation -->
+      <div class="style-card">
+        <div class="style-title">✨ アニメーション</div>
+        <div class="style-grid">
+          <div class="style-field" style="grid-column: 1 / -1">
+            <label>デフォルトアニメーション</label>
+            <select id="styleAnimation" onchange="updateStyle()">
+              <option value="fadeIn">フェードイン</option>
+              <option value="slideUp">スライドアップ ↑</option>
+              <option value="slideDown">スライドダウン ↓</option>
+              <option value="pop">ポップ</option>
+              <option value="bounce">バウンス</option>
+              <option value="typewriter">タイプライター</option>
+              <option value="none">なし</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- Audio Tracks -->
+      <div class="audio-card">
+        <div class="audio-title">🔊 サウンド</div>
+        <div id="audioTrackList"></div>
+        <button class="audio-upload-btn" onclick="document.getElementById('audioFileInput').click()">＋
+          音声ファイルを追加</button>
+        <input type="file" id="audioFileInput" accept="audio/*" style="display:none" onchange="uploadAudioFile(this)">
+      </div>
+
+      <!-- Video Editing -->
+      <div class="edit-card">
+        <div class="edit-title">🎬 動画編集</div>
+
+        <!-- Trim -->
+        <div class="edit-section">
+          <div class="edit-section-title">✂️ トリミング</div>
+          <div class="edit-row">
+            <div class="edit-field">
+              <label>開始</label>
+              <input type="number" id="trimStart" value="0" min="0" step="0.1" onchange="updateEditSettings()">
+              <label>秒</label>
+            </div>
+            <span style="color:#555">→</span>
+            <div class="edit-field">
+              <label>終了</label>
+              <input type="number" id="trimEnd" value="" min="0" step="0.1" placeholder="最後"
+                onchange="updateEditSettings()">
+              <label>秒</label>
+            </div>
+          </div>
+          <div class="edit-hint">※ 終了が空欄の場合は動画の最後まで</div>
+        </div>
+
+        <!-- Transition -->
+        <div class="edit-section">
+          <div class="edit-section-title">✨ トランジション</div>
+          <div class="edit-row">
+            <div class="edit-field">
+              <label>フェードイン</label>
+              <input type="number" id="fadeIn" value="0" min="0" max="5" step="0.1" onchange="updateEditSettings()">
+              <label>秒</label>
+            </div>
+            <div class="edit-field">
+              <label>フェードアウト</label>
+              <input type="number" id="fadeOut" value="0" min="0" max="5" step="0.1" onchange="updateEditSettings()">
+              <label>秒</label>
+            </div>
+          </div>
+        </div>
+
+        <!-- Speed -->
+        <div class="edit-section">
+          <div class="edit-section-title">⏩ 再生速度</div>
+          <div class="edit-row">
+            <div class="edit-field">
+              <label>倍速</label>
+              <input type="number" id="playbackSpeed" value="1" min="0.1" max="4" step="0.1"
+                onchange="updateEditSettings(); updateSpeedPresets()">
+              <label>x</label>
+            </div>
+          </div>
+          <div class="speed-presets">
+            <button class="speed-preset-btn" onclick="setSpeed(0.25)">0.25x</button>
+            <button class="speed-preset-btn" onclick="setSpeed(0.5)">0.5x</button>
+            <button class="speed-preset-btn active" onclick="setSpeed(1)">1x</button>
+            <button class="speed-preset-btn" onclick="setSpeed(1.5)">1.5x</button>
+            <button class="speed-preset-btn" onclick="setSpeed(2)">2x</button>
+            <button class="speed-preset-btn" onclick="setSpeed(4)">4x</button>
+          </div>
+          <div class="edit-hint">※ 0.5x = スローモーション、 2x = 早送り</div>
+        </div>
+
+        <!-- Merge -->
+        <div class="edit-section">
+          <div class="edit-section-title">🔗 動画の結合</div>
+          <div id="mergeVideoList"></div>
+          <button class="merge-upload-btn" onclick="document.getElementById('mergeVideoInput').click()">＋
+            動画を追加して結合</button>
+          <input type="file" id="mergeVideoInput" accept="video/*" style="display:none"
+            onchange="uploadMergeVideo(this)">
+          <div class="edit-hint">※ メイン動画の後ろに結合されます</div>
+        </div>
+      </div>
+
+      <!-- Image Overlays -->
+      <div class="visual-card">
+        <div class="visual-title overlay">🖼️ 画像オーバーレイ</div>
+        <div id="overlayList"></div>
+        <button class="overlay-upload-btn" onclick="document.getElementById('overlayImageInput').click()">＋
+          画像を追加</button>
+        <input type="file" id="overlayImageInput" accept="image/*" style="display:none"
+          onchange="uploadOverlayImage(this)">
+        <div class="edit-hint">※ ロゴ、スタンプ、フレームなどを好きな位置・タイミングで表示</div>
+      </div>
+
+      <!-- Filters -->
+      <div class="visual-card">
+        <div class="visual-title filter">🎨 フィルター / 色調補正</div>
+        <div class="filter-grid">
+          <div class="filter-item">
+            <label>明るさ <span id="filterBrightnessVal">100%</span></label>
+            <input type="range" id="filterBrightness" min="0" max="200" value="100" oninput="updateFilters()">
+          </div>
+          <div class="filter-item">
+            <label>コントラスト <span id="filterContrastVal">100%</span></label>
+            <input type="range" id="filterContrast" min="0" max="200" value="100" oninput="updateFilters()">
+          </div>
+          <div class="filter-item">
+            <label>彩度 <span id="filterSaturateVal">100%</span></label>
+            <input type="range" id="filterSaturate" min="0" max="200" value="100" oninput="updateFilters()">
+          </div>
+          <div class="filter-item">
+            <label>セピア <span id="filterSepiaVal">0%</span></label>
+            <input type="range" id="filterSepia" min="0" max="100" value="0" oninput="updateFilters()">
+          </div>
+          <div class="filter-item">
+            <label>モノクロ <span id="filterGrayscaleVal">0%</span></label>
+            <input type="range" id="filterGrayscale" min="0" max="100" value="0" oninput="updateFilters()">
+          </div>
+          <div class="filter-item">
+            <label>色相回転 <span id="filterHueVal">0°</span></label>
+            <input type="range" id="filterHue" min="0" max="360" value="0" oninput="updateFilters()">
+          </div>
+          <div class="filter-item">
+            <label>ぼかし <span id="filterBlurVal">0px</span></label>
+            <input type="range" id="filterBlur" min="0" max="20" value="0" step="0.5" oninput="updateFilters()">
+          </div>
+          <div class="filter-item" style="display:flex; align-items:flex-end; justify-content:flex-end">
+            <button class="btn-reset" onclick="resetFilters()">↺ リセット</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Ken Burns -->
+      <div class="visual-card">
+        <div class="visual-title kenburns">📷 ズーム / パン（Ken Burns）</div>
+        <div style="margin-bottom:12px">
+          <div class="toggle-row">
+            <button class="toggle" id="kbToggle" onclick="this.classList.toggle('active'); updateKenBurns()"></button>
+            <span style="font-size:13px; color:#888" id="kbLabel">OFF</span>
+          </div>
+        </div>
+        <div id="kbControls" style="display:none">
+          <div class="edit-hint" style="margin-bottom:8px">※ 開始→終了にかけて値が変化します</div>
+          <div class="kb-grid">
+            <div>
+              <div style="font-size:12px; color:#888; margin-bottom:6px">開始</div>
+              <div class="kb-field">
+                <label>ズーム</label>
+                <input type="number" id="kbStartScale" value="1.0" min="0.5" max="3" step="0.05"
+                  onchange="updateKenBurns()">
+              </div>
+              <div class="kb-field" style="margin-top:6px">
+                <label>X</label>
+                <input type="number" id="kbStartX" value="0" min="-50" max="50" step="1" onchange="updateKenBurns()">
+                <label>Y</label>
+                <input type="number" id="kbStartY" value="0" min="-50" max="50" step="1" onchange="updateKenBurns()">
+              </div>
+            </div>
+            <div>
+              <div style="font-size:12px; color:#888; margin-bottom:6px">終了</div>
+              <div class="kb-field">
+                <label>ズーム</label>
+                <input type="number" id="kbEndScale" value="1.2" min="0.5" max="3" step="0.05"
+                  onchange="updateKenBurns()">
+              </div>
+              <div class="kb-field" style="margin-top:6px">
+                <label>X</label>
+                <input type="number" id="kbEndX" value="0" min="-50" max="50" step="1" onchange="updateKenBurns()">
+                <label>Y</label>
+                <input type="number" id="kbEndY" value="0" min="-50" max="50" step="1" onchange="updateKenBurns()">
+              </div>
+            </div>
+          </div>
+          <div class="speed-presets" style="margin-top:10px">
+            <button class="speed-preset-btn" onclick="setKBPreset(1.0,1.2,0,0,0,0)">ズームイン</button>
+            <button class="speed-preset-btn" onclick="setKBPreset(1.2,1.0,0,0,0,0)">ズームアウト</button>
+            <button class="speed-preset-btn" onclick="setKBPreset(1.1,1.1,-10,10,0,0)">左→右パン</button>
+            <button class="speed-preset-btn" onclick="setKBPreset(1.15,1.15,0,0,5,-5)">下→上パン</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Free Telop -->
+      <div class="telop-card">
+        <div class="telop-title">📝 フリーテロップ</div>
+        <div id="telopList"></div>
+        <button class="telop-add-btn" onclick="addTelop()">＋ テロップを追加</button>
+        <div class="edit-hint">※ 字幕とは別に自由なテキストを好きな位置・タイミングで表示</div>
+      </div>
+
+      <!-- Export Section -->
+      <div class="export-card">
+        <div class="export-title">📤 エクスポート</div>
+
+        <!-- MP4 Render -->
+        <div class="export-section">
+          <div class="export-section-title">🎬 MP4レンダリング</div>
+          <div class="export-row">
+            <button class="export-btn render" id="renderBtn" onclick="startRender()">📦 動画を書き出し</button>
+          </div>
+          <div class="edit-hint">※ 現在の設定を全て反映してMP4を生成します（数分かかる場合があります）</div>
+          <div class="render-status" id="renderStatus"></div>
+          <div id="renderResult"></div>
+        </div>
+
+        <!-- SRT/VTT -->
+        <div class="export-section">
+          <div class="export-section-title">📝 字幕ファイルエクスポート</div>
+          <div class="export-row">
+            <div class="export-field">
+              <label>形式</label>
+              <select id="exportSubFormat">
+                <option value="srt">SRT（YouTube対応）</option>
+                <option value="vtt">WebVTT</option>
+              </select>
+            </div>
+            <button class="export-btn sub" onclick="exportSubtitles()">⬇ ダウンロード</button>
+          </div>
+          <div class="edit-hint">※ YouTubeや動画プレイヤー用の字幕ファイル</div>
+        </div>
+
+        <!-- Thumbnail -->
+        <div class="export-section">
+          <div class="export-section-title">🖼️ サムネイル生成</div>
+          <div class="export-row">
+            <div class="export-field">
+              <label>時刻</label>
+              <input type="number" id="thumbTime" value="0" min="0" step="0.1">
+              <label>秒</label>
+            </div>
+            <button class="export-btn thumb" onclick="generateThumbnail()">📸 生成</button>
+          </div>
+          <div class="edit-hint">※ 指定した時刻のフレームをJPEGで保存</div>
+          <div id="thumbResult"></div>
+        </div>
+      </div>
+
+      <div class="actions">
+        <button class="btn btn-save" onclick="saveAll()">💾 保存</button>
+        <button class="btn btn-primary" onclick="saveAndOpenStudio()">Remotion Studioで確認 →</button>
+        <button class="btn btn-secondary" onclick="location.reload()">別の動画を処理</button>
+      </div>
+
+      <!-- Utility Bar -->
+      <div class="utility-bar" id="utilityBar">
+        <span class="utility-title">🛠</span>
+        <button class="util-btn undo" id="undoBtn" onclick="undo()" disabled title="Ctrl+Z">↩ 戻す</button>
+        <button class="util-btn redo" id="redoBtn" onclick="redo()" disabled title="Ctrl+Shift+Z">↪ やり直し</button>
+        <span class="undo-count" id="undoCount"></span>
+        <div class="util-sep"></div>
+        <button class="util-btn project-save" onclick="downloadProject()" title="プロジェクト保存">📁 プロジェクト保存</button>
+        <button class="util-btn project-load" onclick="document.getElementById('projectFileInput').click()"
+          title="プロジェクト読込">📂 読込</button>
+        <input type="file" id="projectFileInput" accept=".json" style="display:none" onchange="loadProject(this)">
+        <div class="util-sep"></div>
+        <button class="util-btn shortcut-help"
+          onclick="document.getElementById('shortcutPanel').classList.toggle('open')" title="ショートカット一覧">⌨
+          ショートカット</button>
+      </div>
+      <div class="shortcut-panel" id="shortcutPanel">
+        <table>
+          <tr>
+            <td>Ctrl + S</td>
+            <td>保存（全設定をサーバーに保存）</td>
+          </tr>
+          <tr>
+            <td>Ctrl + Z</td>
+            <td>元に戻す</td>
+          </tr>
+          <tr>
+            <td>Ctrl + Shift + Z</td>
+            <td>やり直し</td>
+          </tr>
+          <tr>
+            <td>Ctrl + E</td>
+            <td>プロジェクトをJSONで保存</td>
+          </tr>
+          <tr>
+            <td>Ctrl + O</td>
+            <td>プロジェクトを読み込み</td>
+          </tr>
+          <tr>
+            <td>Ctrl + Enter</td>
+            <td>Remotion Studioを開く</td>
+          </tr>
+        </table>
+      </div>
+    </div>
+    <div class="save-toast" id="saveToast">✅ 保存しました</div>
+
+    <div class="error-msg" id="errorMsg"></div>
+  </div>
+
+  <script>
+    const SERVER = "http://localhost:3001";
+    let currentFilename = "";
+    let currentSubtitles = [];
+    let currentStyle = {
+      fontFamily: "Noto Sans JP",
+      fontSize: 42,
+      fontColor: "#ffffff",
+      bgColor: "#000000",
+      bgOpacity: 0.75,
+      position: "bottom",
+      posX: 50,
+      posY: 90,
+      bold: true,
+      animation: "fadeIn"
+    };
+    let audioTracks = [];
+    let editSettings = {
+      trim: { startTime: 0, endTime: null },
+      transition: { fadeIn: 0, fadeOut: 0 },
+      speedSections: [{ start: 0, end: 9999, speed: 1 }],
+      additionalVideos: [],
+      imageOverlays: [],
+      filters: { brightness: 100, contrast: 100, saturate: 100, sepia: 0, grayscale: 0, hueRotate: 0, blur: 0 },
+      kenBurns: { enabled: false, startScale: 1.0, endScale: 1.2, startX: 0, endX: 0, startY: 0, endY: 0 },
+      textOverlays: []
+    };
+
+    // Undo/Redo
+    let undoStack = [];
+    let redoStack = [];
+    const MAX_UNDO = 50;
+
+    function takeSnapshot() {
+      const snap = JSON.stringify({ currentSubtitles, currentStyle, audioTracks, editSettings });
+      if (undoStack.length > 0 && undoStack[undoStack.length - 1] === snap) return;
+      undoStack.push(snap);
+      if (undoStack.length > MAX_UNDO) undoStack.shift();
+      redoStack = [];
+      updateUndoButtons();
+    }
+
+    function undo() {
+      if (undoStack.length < 2) return;
+      redoStack.push(undoStack.pop());
+      const snap = JSON.parse(undoStack[undoStack.length - 1]);
+      currentSubtitles = snap.currentSubtitles;
+      currentStyle = snap.currentStyle;
+      audioTracks = snap.audioTracks;
+      editSettings = snap.editSettings;
+      refreshUI();
+      updateUndoButtons();
+    }
+
+    function redo() {
+      if (redoStack.length === 0) return;
+      const snap = JSON.parse(redoStack.pop());
+      undoStack.push(JSON.stringify(snap));
+      currentSubtitles = snap.currentSubtitles;
+      currentStyle = snap.currentStyle;
+      audioTracks = snap.audioTracks;
+      editSettings = snap.editSettings;
+      refreshUI();
+      updateUndoButtons();
+    }
+
+    function updateUndoButtons() {
+      document.getElementById('undoBtn').disabled = undoStack.length < 2;
+      document.getElementById('redoBtn').disabled = redoStack.length === 0;
+      const count = document.getElementById('undoCount');
+      count.textContent = `${undoStack.length - 1}/${MAX_UNDO}`;
+    }
+
+    function refreshUI() {
+      displayResults();
+      displayAudioTracks();
+      displayOverlays();
+      displayMergeVideos();
+      displayTelops();
+    }
+
+    // Drag & Drop
+    const uploadArea = document.getElementById("uploadArea");
+    const fileInput = document.getElementById("fileInput");
+
+    uploadArea.addEventListener("dragover", (e) => {
+      e.preventDefault();
+      uploadArea.classList.add("dragover");
+    });
+
+    uploadArea.addEventListener("dragleave", () => {
+      uploadArea.classList.remove("dragover");
+    });
+
+    uploadArea.addEventListener("drop", (e) => {
+      e.preventDefault();
+      uploadArea.classList.remove("dragover");
+      const file = e.dataTransfer.files[0];
+      if (file && file.type.startsWith("video/")) {
+        processFile(file);
+      }
+    });
+
+    fileInput.addEventListener("change", (e) => {
+      const file = e.target.files[0];
+      if (file) processFile(file);
+    });
+
+    function setStep(id, state) {
+      const el = document.getElementById(id);
+      el.className = `step ${state}`;
+      if (state === "active") {
+        const icon = el.querySelector(".step-icon");
+        icon.innerHTML = '<div class="spinner"></div>';
+      } else if (state === "done") {
+        const icon = el.querySelector(".step-icon");
+        icon.textContent = "✅";
+      } else if (state === "error") {
+        const icon = el.querySelector(".step-icon");
+        icon.textContent = "❌";
+      }
+    }
+
+    function updateStyle() {
+      currentStyle.fontFamily = document.getElementById('styleFont').value;
+      currentStyle.fontSize = parseInt(document.getElementById('styleFontSize').value);
+      currentStyle.fontColor = document.getElementById('styleFontColor').value;
+      currentStyle.bgColor = document.getElementById('styleBgColor').value;
+      currentStyle.bgOpacity = parseInt(document.getElementById('styleBgOpacity').value) / 100;
+      currentStyle.bold = document.getElementById('styleBold').classList.contains('active');
+      currentStyle.posX = parseInt(document.getElementById('stylePosX').value) || 50;
+      currentStyle.posY = parseInt(document.getElementById('stylePosY').value) || 90;
+      document.getElementById('styleFontColorHex').value = currentStyle.fontColor;
+      document.getElementById('styleBgColorHex').value = currentStyle.bgColor;
+      document.getElementById('boldLabel').textContent = currentStyle.bold ? 'ON' : 'OFF';
+      currentStyle.animation = document.getElementById('styleAnimation').value;
+      document.getElementById('customPosField').style.display = currentStyle.position === 'custom' ? '' : 'none';
+      updatePreview();
+    }
+
+    function setPosition(pos) {
+      currentStyle.position = pos;
+      document.querySelectorAll('.pos-btn').forEach(b => b.classList.remove('active'));
+      event.target.classList.add('active');
+      document.getElementById('customPosField').style.display = pos === 'custom' ? '' : 'none';
+      updatePreview();
+    }
+
+    function updatePreview() {
+      const preview = document.getElementById('stylePreview');
+      const text = document.getElementById('stylePreviewText');
+      const r = parseInt(currentStyle.bgColor.slice(1, 3), 16);
+      const g = parseInt(currentStyle.bgColor.slice(3, 5), 16);
+      const b = parseInt(currentStyle.bgColor.slice(5, 7), 16);
+      text.style.backgroundColor = `rgba(${r},${g},${b},${currentStyle.bgOpacity})`;
+      text.style.color = currentStyle.fontColor;
+      text.style.fontSize = Math.min(currentStyle.fontSize, 32) + 'px';
+      text.style.fontWeight = currentStyle.bold ? 'bold' : 'normal';
+      text.style.fontFamily = `'${currentStyle.fontFamily}', sans-serif`;
+      if (currentStyle.position === 'custom') {
+        preview.style.alignItems = 'center';
+        text.style.position = 'absolute';
+        text.style.left = currentStyle.posX + '%';
+        text.style.top = currentStyle.posY + '%';
+        text.style.transform = 'translate(-50%, -50%)';
+      } else {
+        text.style.position = 'static';
+        text.style.transform = 'none';
+        preview.style.alignItems = currentStyle.position === 'top' ? 'flex-start' : currentStyle.position === 'center' ? 'center' : 'flex-end';
+      }
+      text.style.margin = '8px';
+    }
+
+    async function processFile(file) {
+      const videoPreview = document.getElementById("videoPreview");
+      const previewVideo = document.getElementById("previewVideo");
+      previewVideo.src = URL.createObjectURL(file);
+      videoPreview.style.display = "block";
+
+      document.getElementById("progressSection").classList.add("active");
+      document.getElementById("resultSection").classList.remove("active");
+      document.getElementById("errorMsg").textContent = "";
+      document.getElementById("uploadDetail").textContent = `${file.name} (${(file.size / 1024 / 1024).toFixed(1)}MB)`;
+
+      try {
+        setStep("stepUpload", "active");
+        const formData = new FormData();
+        formData.append("video", file);
+        const uploadRes = await fetch(`${SERVER}/api/upload`, {
+          method: "POST",
+          body: formData,
+        });
+        if (!uploadRes.ok) throw new Error("アップロードに失敗しました");
+        const uploadData = await uploadRes.json();
+        currentFilename = uploadData.filename;
+        setStep("stepUpload", "done");
+
+        setStep("stepExtract", "active");
+        setStep("stepTranscribe", "active");
+        const transcribeRes = await fetch(`${SERVER}/api/transcribe`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ filename: currentFilename }),
+        });
+        setStep("stepExtract", "done");
+
+        if (!transcribeRes.ok) {
+          const err = await transcribeRes.json();
+          throw new Error(err.error || "文字起こしに失敗しました");
+        }
+
+        const data = await transcribeRes.json();
+        setStep("stepTranscribe", "done");
+        currentSubtitles = data.subtitles;
+        displayResults();
+
+      } catch (error) {
+        document.getElementById("errorMsg").textContent = `エラー: ${error.message}`;
+        ["stepUpload", "stepExtract", "stepTranscribe"].forEach((id) => {
+          const el = document.getElementById(id);
+          if (el.classList.contains("active")) setStep(id, "error");
+        });
+      }
+    }
+
+    function displayResults() {
+      const list = document.getElementById("subtitleList");
+      const fontOptions = Array.from(document.getElementById('styleFont').options)
+        .map(o => `<option value="${o.value}">${o.text}</option>`).join('');
+
+      list.innerHTML = currentSubtitles
+        .map(
+          (sub, i) => `
+          <div class="subtitle-item" data-index="${i}">
+            <span class="sub-index">${i + 1}</span>
+            <input type="number" step="0.1" min="0" value="${sub.start}" onchange="updateSubtitle(${i}, 'start', this.value)" title="開始(秒)">
+            <span class="time-sep">→</span>
+            <input type="number" step="0.1" min="0" value="${sub.end}" onchange="updateSubtitle(${i}, 'end', this.value)" title="終了(秒)">
+            <input type="text" value="${sub.text.replace(/"/g, '&quot;')}" onchange="updateSubtitle(${i}, 'text', this.value)" placeholder="字幕テキスト">
+            <div class="seg-pos">
+              <span class="seg-pos-label">X</span>
+              <input type="number" min="0" max="100" value="${sub.posX ?? ''}" onchange="updateSubtitle(${i}, 'posX', this.value)" placeholder="-">
+              <span class="seg-pos-label">Y</span>
+              <input type="number" min="0" max="100" value="${sub.posY ?? ''}" onchange="updateSubtitle(${i}, 'posY', this.value)" placeholder="-">
+            </div>
+            <button class="btn-icon btn-style-toggle" onclick="toggleSegStyle(${i})" title="個別スタイル">🎨</button>
+            <button class="btn-icon btn-delete" onclick="deleteSubtitle(${i})" title="削除">✕</button>
+          </div>
+          <div class="seg-style-row" id="segStyle${i}">
+            <div class="seg-field">
+              <label>フォント</label>
+              <select onchange="updateSubtitle(${i}, 'fontFamily', this.value)">
+                <option value="">デフォルト</option>
+                ${fontOptions}
+              </select>
+            </div>
+            <div class="seg-field">
+              <label>サイズ</label>
+              <input type="number" min="16" max="120" value="${sub.fontSize ?? ''}" onchange="updateSubtitle(${i}, 'fontSize', this.value)" placeholder="-">
+            </div>
+            <div class="seg-field">
+              <label>文字色</label>
+              <input type="color" value="${sub.fontColor || '#ffffff'}" onchange="updateSubtitle(${i}, 'fontColor', this.value)">
+            </div>
+            <div class="seg-field">
+              <label>背景色</label>
+              <input type="color" value="${sub.bgColor || '#000000'}" onchange="updateSubtitle(${i}, 'bgColor', this.value)">
+            </div>
+            <div class="seg-field">
+              <label>アニメ</label>
+              <select onchange="updateSubtitle(${i}, 'animation', this.value)">
+                <option value="">デフォルト</option>
+                <option value="fadeIn">フェードイン</option>
+                <option value="slideUp">スライド↑</option>
+                <option value="slideDown">スライド↓</option>
+                <option value="pop">ポップ</option>
+                <option value="bounce">バウンス</option>
+                <option value="typewriter">タイプ</option>
+                <option value="none">なし</option>
+              </select>
+            </div>
+          </div>
+        `
+        )
+        .join("");
+
+      // セグメント個別フォント・アニメーションの選択値を復元
+      currentSubtitles.forEach((sub, i) => {
+        const row = document.getElementById(`segStyle${i}`);
+        if (sub.fontFamily) {
+          const sel = row.querySelector('select');
+          if (sel) sel.value = sub.fontFamily;
+        }
+        if (sub.animation) {
+          const animSel = row.querySelectorAll('select')[1];
+          if (animSel) animSel.value = sub.animation;
+        }
+      });
+
+      document.getElementById("resultSection").classList.add("active");
+    }
+
+    function toggleSegStyle(index) {
+      const row = document.getElementById(`segStyle${index}`);
+      row.classList.toggle('open');
+    }
+
+    function updateSubtitle(index, field, value) {
+      if (field === 'start' || field === 'end') {
+        currentSubtitles[index][field] = parseFloat(value);
+      } else if (field === 'posX' || field === 'posY' || field === 'fontSize') {
+        if (value === '' || value === undefined) {
+          delete currentSubtitles[index][field];
+        } else {
+          currentSubtitles[index][field] = parseInt(value);
+        }
+      } else if (field === 'fontFamily' || field === 'fontColor' || field === 'bgColor' || field === 'animation') {
+        if (!value || value === '') {
+          delete currentSubtitles[index][field];
+        } else {
+          currentSubtitles[index][field] = value;
+        }
+      } else {
+        currentSubtitles[index][field] = value;
+      }
+    }
+
+    function deleteSubtitle(index) {
+      currentSubtitles.splice(index, 1);
+      displayResults();
+    }
+
+    function addSubtitle() {
+      const lastEnd = currentSubtitles.length > 0
+        ? currentSubtitles[currentSubtitles.length - 1].end
+        : 0;
+      currentSubtitles.push({
+        start: lastEnd,
+        end: lastEnd + 3,
+        text: ""
+      });
+      displayResults();
+      // 新しい行のテキスト入力にフォーカス
+      setTimeout(() => {
+        const inputs = document.querySelectorAll('.subtitle-item:last-child input[type="text"]');
+        if (inputs.length) inputs[0].focus();
+      }, 50);
+    }
+
+    async function saveSubtitles() {
+      const res = await fetch(`${SERVER}/api/save-subtitles`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ filename: currentFilename, subtitles: currentSubtitles }),
+      });
+      if (!res.ok) throw new Error("字幕の保存に失敗");
+    }
+
+    async function saveStyle() {
+      const res = await fetch(`${SERVER}/api/save-style`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ filename: currentFilename, style: currentStyle }),
+      });
+      if (!res.ok) throw new Error("スタイルの保存に失敗");
+    }
+
+    async function saveAudioTracks() {
+      if (audioTracks.length === 0) return;
+      const res = await fetch(`${SERVER}/api/save-audio`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ filename: currentFilename, audioTracks }),
+      });
+      if (!res.ok) throw new Error("オーディオの保存に失敗");
+    }
+
+    async function saveEditSettings() {
+      const res = await fetch(`${SERVER}/api/save-edit`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ filename: currentFilename, editSettings }),
+      });
+      if (!res.ok) throw new Error("編集設定の保存に失敗");
+    }
+
+    async function saveAll() {
+      try {
+        await Promise.all([saveSubtitles(), saveStyle(), saveAudioTracks(), saveEditSettings()]);
+        showToast();
+      } catch (error) {
+        document.getElementById("errorMsg").textContent = `エラー: ${error.message}`;
+      }
+    }
+
+    async function saveAndOpenStudio() {
+      const w = window.open("http://localhost:3000/MyComp", "_blank");
+      try {
+        await Promise.all([saveSubtitles(), saveStyle(), saveAudioTracks(), saveEditSettings()]);
+      } catch (e) { }
+      if (w) w.focus();
+    }
+
+    // Audio track management
+    async function uploadAudioFile(input) {
+      const file = input.files[0];
+      if (!file) return;
+      const formData = new FormData();
+      formData.append("audio", file);
+      try {
+        const res = await fetch(`${SERVER}/api/upload-audio`, {
+          method: "POST",
+          body: formData,
+        });
+        if (!res.ok) throw new Error("アップロード失敗");
+        const data = await res.json();
+        audioTracks.push({ filename: data.filename, startTime: 0, volume: 0.5 });
+        displayAudioTracks();
+      } catch (error) {
+        document.getElementById("errorMsg").textContent = `エラー: ${error.message}`;
+      }
+      input.value = '';
+    }
+
+    function displayAudioTracks() {
+      const list = document.getElementById('audioTrackList');
+      list.innerHTML = audioTracks.map((t, i) => `
+        <div class="audio-item">
+          <span class="audio-name">🎵 ${t.filename}</span>
+          <label>開始(s)</label>
+          <input type="number" value="${t.startTime}" step="0.1" min="0" onchange="audioTracks[${i}].startTime=parseFloat(this.value)">
+          <label>音量</label>
+          <input type="number" value="${t.volume}" step="0.1" min="0" max="1" onchange="audioTracks[${i}].volume=parseFloat(this.value)">
+          <button class="btn-icon btn-delete" onclick="audioTracks.splice(${i},1); displayAudioTracks()" title="削除">✕</button>
+        </div>
+      `).join('');
+    }
+
+    // Edit settings
+    function updateEditSettings() {
+      const startVal = document.getElementById('trimStart').value;
+      const endVal = document.getElementById('trimEnd').value;
+      editSettings.trim.startTime = parseFloat(startVal) || 0;
+      editSettings.trim.endTime = endVal ? parseFloat(endVal) : null;
+      editSettings.transition.fadeIn = parseFloat(document.getElementById('fadeIn').value) || 0;
+      editSettings.transition.fadeOut = parseFloat(document.getElementById('fadeOut').value) || 0;
+      const speed = parseFloat(document.getElementById('playbackSpeed').value) || 1;
+      editSettings.speedSections = [{ start: 0, end: 9999, speed }];
+    }
+
+    function setSpeed(speed) {
+      document.getElementById('playbackSpeed').value = speed;
+      updateEditSettings();
+      updateSpeedPresets();
+    }
+
+    function updateSpeedPresets() {
+      const speed = parseFloat(document.getElementById('playbackSpeed').value);
+      document.querySelectorAll('.speed-preset-btn').forEach(btn => {
+        btn.classList.toggle('active', parseFloat(btn.textContent) === speed);
+      });
+    }
+
+    async function uploadMergeVideo(input) {
+      const file = input.files[0];
+      if (!file) return;
+      const formData = new FormData();
+      formData.append("video", file);
+      try {
+        const res = await fetch(`${SERVER}/api/upload-video`, {
+          method: "POST",
+          body: formData,
+        });
+        if (!res.ok) throw new Error("アップロード失敗");
+        const data = await res.json();
+        editSettings.additionalVideos.push(data.filename);
+        displayMergeVideos();
+      } catch (error) {
+        document.getElementById("errorMsg").textContent = `エラー: ${error.message}`;
+      }
+      input.value = '';
+    }
+
+    function displayMergeVideos() {
+      const list = document.getElementById('mergeVideoList');
+      list.innerHTML = editSettings.additionalVideos.map((v, i) => `
+        <div class="merge-item">
+          <span class="merge-name">🎬 ${v}</span>
+          <button class="btn-icon btn-delete" onclick="editSettings.additionalVideos.splice(${i},1); displayMergeVideos()" title="削除">✕</button>
+        </div>
+      `).join('');
+    }
+
+    // Image overlays
+    async function uploadOverlayImage(input) {
+      const file = input.files[0];
+      if (!file) return;
+      const formData = new FormData();
+      formData.append("image", file);
+      try {
+        const res = await fetch(`${SERVER}/api/upload-image`, {
+          method: "POST",
+          body: formData,
+        });
+        if (!res.ok) throw new Error("アップロード失敗");
+        const data = await res.json();
+        editSettings.imageOverlays.push({
+          filename: data.filename,
+          startTime: 0,
+          endTime: 5,
+          posX: 50,
+          posY: 50,
+          width: 200,
+          opacity: 1,
+          animation: "fadeIn"
+        });
+        displayOverlays();
+      } catch (error) {
+        document.getElementById("errorMsg").textContent = `エラー: ${error.message}`;
+      }
+      input.value = '';
+    }
+
+    function displayOverlays() {
+      const list = document.getElementById('overlayList');
+      list.innerHTML = editSettings.imageOverlays.map((o, i) => `
+        <div class="overlay-item">
+          <span class="overlay-name">🖼️ ${o.filename.slice(0, 15)}</span>
+          <label>開始</label><input type="number" value="${o.startTime}" step="0.1" min="0" onchange="editSettings.imageOverlays[${i}].startTime=parseFloat(this.value)">
+          <label>終了</label><input type="number" value="${o.endTime}" step="0.1" min="0" onchange="editSettings.imageOverlays[${i}].endTime=parseFloat(this.value)">
+          <label>X%</label><input type="number" value="${o.posX}" min="0" max="100" onchange="editSettings.imageOverlays[${i}].posX=parseInt(this.value)">
+          <label>Y%</label><input type="number" value="${o.posY}" min="0" max="100" onchange="editSettings.imageOverlays[${i}].posY=parseInt(this.value)">
+          <label>幅</label><input type="number" value="${o.width}" min="10" max="1000" step="10" onchange="editSettings.imageOverlays[${i}].width=parseInt(this.value)">
+          <label>透明度</label><input type="number" value="${o.opacity}" step="0.1" min="0" max="1" onchange="editSettings.imageOverlays[${i}].opacity=parseFloat(this.value)">
+          <select onchange="editSettings.imageOverlays[${i}].animation=this.value">
+            <option value="none" ${o.animation === 'none' ? 'selected' : ''}>なし</option>
+            <option value="fadeIn" ${o.animation === 'fadeIn' ? 'selected' : ''}>フェード</option>
+            <option value="pop" ${o.animation === 'pop' ? 'selected' : ''}>ポップ</option>
+          </select>
+          <button class="btn-icon btn-delete" onclick="editSettings.imageOverlays.splice(${i},1); displayOverlays()" title="削除">✕</button>
+        </div>
+      `).join('');
+    }
+
+    // Filters
+    function updateFilters() {
+      const f = editSettings.filters;
+      f.brightness = parseInt(document.getElementById('filterBrightness').value);
+      f.contrast = parseInt(document.getElementById('filterContrast').value);
+      f.saturate = parseInt(document.getElementById('filterSaturate').value);
+      f.sepia = parseInt(document.getElementById('filterSepia').value);
+      f.grayscale = parseInt(document.getElementById('filterGrayscale').value);
+      f.hueRotate = parseInt(document.getElementById('filterHue').value);
+      f.blur = parseFloat(document.getElementById('filterBlur').value);
+      // Update labels
+      document.getElementById('filterBrightnessVal').textContent = f.brightness + '%';
+      document.getElementById('filterContrastVal').textContent = f.contrast + '%';
+      document.getElementById('filterSaturateVal').textContent = f.saturate + '%';
+      document.getElementById('filterSepiaVal').textContent = f.sepia + '%';
+      document.getElementById('filterGrayscaleVal').textContent = f.grayscale + '%';
+      document.getElementById('filterHueVal').textContent = f.hueRotate + '°';
+      document.getElementById('filterBlurVal').textContent = f.blur + 'px';
+      // Apply to preview video
+      applyPreviewFilter();
+    }
+
+    function resetFilters() {
+      document.getElementById('filterBrightness').value = 100;
+      document.getElementById('filterContrast').value = 100;
+      document.getElementById('filterSaturate').value = 100;
+      document.getElementById('filterSepia').value = 0;
+      document.getElementById('filterGrayscale').value = 0;
+      document.getElementById('filterHue').value = 0;
+      document.getElementById('filterBlur').value = 0;
+      updateFilters();
+    }
+
+    function applyPreviewFilter() {
+      const video = document.getElementById('previewVideo');
+      if (!video) return;
+      const f = editSettings.filters;
+      const parts = [];
+      if (f.brightness !== 100) parts.push(`brightness(${f.brightness}%)`);
+      if (f.contrast !== 100) parts.push(`contrast(${f.contrast}%)`);
+      if (f.saturate !== 100) parts.push(`saturate(${f.saturate}%)`);
+      if (f.sepia > 0) parts.push(`sepia(${f.sepia}%)`);
+      if (f.grayscale > 0) parts.push(`grayscale(${f.grayscale}%)`);
+      if (f.hueRotate > 0) parts.push(`hue-rotate(${f.hueRotate}deg)`);
+      if (f.blur > 0) parts.push(`blur(${f.blur}px)`);
+      video.style.filter = parts.join(' ') || 'none';
+    }
+
+    // Ken Burns
+    function updateKenBurns() {
+      const kb = editSettings.kenBurns;
+      kb.enabled = document.getElementById('kbToggle').classList.contains('active');
+      kb.startScale = parseFloat(document.getElementById('kbStartScale').value) || 1;
+      kb.endScale = parseFloat(document.getElementById('kbEndScale').value) || 1;
+      kb.startX = parseFloat(document.getElementById('kbStartX').value) || 0;
+      kb.endX = parseFloat(document.getElementById('kbEndX').value) || 0;
+      kb.startY = parseFloat(document.getElementById('kbStartY').value) || 0;
+      kb.endY = parseFloat(document.getElementById('kbEndY').value) || 0;
+      document.getElementById('kbLabel').textContent = kb.enabled ? 'ON' : 'OFF';
+      document.getElementById('kbControls').style.display = kb.enabled ? '' : 'none';
+    }
+
+    function setKBPreset(ss, es, sx, ex, sy, ey) {
+      document.getElementById('kbStartScale').value = ss;
+      document.getElementById('kbEndScale').value = es;
+      document.getElementById('kbStartX').value = sx;
+      document.getElementById('kbEndX').value = ex;
+      document.getElementById('kbStartY').value = sy;
+      document.getElementById('kbEndY').value = ey;
+      if (!document.getElementById('kbToggle').classList.contains('active')) {
+        document.getElementById('kbToggle').classList.add('active');
+      }
+      updateKenBurns();
+    }
+
+    // Free Telop
+    function addTelop() {
+      editSettings.textOverlays.push({
+        text: "テロップ",
+        startTime: 0,
+        endTime: 5,
+        posX: 50,
+        posY: 50,
+        fontSize: 48,
+        fontFamily: "Noto Sans JP",
+        fontColor: "#ffffff",
+        bgColor: "#000000",
+        bgOpacity: 0.7,
+        bold: true,
+        animation: "fadeIn"
+      });
+      displayTelops();
+    }
+
+    function displayTelops() {
+      const fontOptions = Array.from(document.getElementById('styleFont').options)
+        .map(o => `<option value="${o.value}">${o.text}</option>`).join('');
+
+      const list = document.getElementById('telopList');
+      list.innerHTML = editSettings.textOverlays.map((t, i) => `
+        <div class="telop-item">
+          <div class="telop-top">
+            <input type="text" value="${t.text.replace(/"/g, '&quot;')}" onchange="editSettings.textOverlays[${i}].text=this.value" placeholder="テキスト">
+            <label>開始</label>
+            <input type="number" value="${t.startTime}" step="0.1" min="0" onchange="editSettings.textOverlays[${i}].startTime=parseFloat(this.value)">
+            <label>終了</label>
+            <input type="number" value="${t.endTime}" step="0.1" min="0" onchange="editSettings.textOverlays[${i}].endTime=parseFloat(this.value)">
+            <label>X%</label>
+            <input type="number" value="${t.posX}" min="0" max="100" onchange="editSettings.textOverlays[${i}].posX=parseInt(this.value)">
+            <label>Y%</label>
+            <input type="number" value="${t.posY}" min="0" max="100" onchange="editSettings.textOverlays[${i}].posY=parseInt(this.value)">
+            <button class="btn-icon btn-style-toggle" onclick="document.getElementById('telopStyle${i}').classList.toggle('open')" title="スタイル">🎨</button>
+            <button class="btn-icon btn-delete" onclick="editSettings.textOverlays.splice(${i},1); displayTelops()" title="削除">✕</button>
+          </div>
+          <div class="telop-style" id="telopStyle${i}">
+            <div class="tsf"><label>フォント</label>
+              <select onchange="editSettings.textOverlays[${i}].fontFamily=this.value">
+                ${fontOptions}
+              </select>
+            </div>
+            <div class="tsf"><label>サイズ</label>
+              <input type="number" value="${t.fontSize}" min="12" max="200" onchange="editSettings.textOverlays[${i}].fontSize=parseInt(this.value)">
+            </div>
+            <div class="tsf"><label>文字</label>
+              <input type="color" value="${t.fontColor}" onchange="editSettings.textOverlays[${i}].fontColor=this.value">
+            </div>
+            <div class="tsf"><label>背景</label>
+              <input type="color" value="${t.bgColor}" onchange="editSettings.textOverlays[${i}].bgColor=this.value">
+            </div>
+            <div class="tsf"><label>透明度</label>
+              <input type="number" value="${t.bgOpacity}" step="0.1" min="0" max="1" style="width:45px" onchange="editSettings.textOverlays[${i}].bgOpacity=parseFloat(this.value)">
+            </div>
+            <div class="tsf"><label>アニメ</label>
+              <select onchange="editSettings.textOverlays[${i}].animation=this.value">
+                <option value="none" ${t.animation === 'none' ? 'selected' : ''}>なし</option>
+                <option value="fadeIn" ${t.animation === 'fadeIn' ? 'selected' : ''}>フェード</option>
+                <option value="slideUp" ${t.animation === 'slideUp' ? 'selected' : ''}>スライド</option>
+                <option value="pop" ${t.animation === 'pop' ? 'selected' : ''}>ポップ</option>
+                <option value="typewriter" ${t.animation === 'typewriter' ? 'selected' : ''}>タイプ</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      `).join('');
+
+      // フォント値復元
+      editSettings.textOverlays.forEach((t, i) => {
+        const sel = document.querySelector(`#telopStyle${i} select`);
+        if (sel) sel.value = t.fontFamily;
+      });
+    }
+
+    // Export: MP4 Render
+    async function startRender() {
+      const btn = document.getElementById('renderBtn');
+      const status = document.getElementById('renderStatus');
+      const result = document.getElementById('renderResult');
+      btn.disabled = true;
+      btn.textContent = '\u23f3 \u30ec\u30f3\u30c0\u30ea\u30f3\u30b0\u4e2d...';
+      status.className = 'render-status';
+      status.textContent = '\u203b \u51e6\u7406\u4e2d\u3067\u3059\u3002\u6570\u5206\u304b\u304b\u308b\u5834\u5408\u304c\u3042\u308a\u307e\u3059...';
+      result.innerHTML = '';
+      try {
+        await Promise.all([saveSubtitles(), saveStyle(), saveAudioTracks(), saveEditSettings()]);
+        const res = await fetch(`${SERVER}/api/render`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ filename: currentFilename }),
+        });
+        if (!res.ok) { const err = await res.json(); throw new Error(err.error); }
+        const data = await res.json();
+        status.className = 'render-status success';
+        status.textContent = '\u2705 \u30ec\u30f3\u30c0\u30ea\u30f3\u30b0\u5b8c\u4e86\uff01';
+        result.innerHTML = `<a class="download-link" href="${SERVER}/${data.path}" download="${data.filename}">\u2b07 ${data.filename} \u3092\u30c0\u30a6\u30f3\u30ed\u30fc\u30c9</a>`;
+      } catch (error) {
+        status.className = 'render-status error';
+        status.textContent = `\u274c \u30a8\u30e9\u30fc: ${error.message}`;
+      } finally {
+        btn.disabled = false;
+        btn.textContent = '\ud83d\udce6 \u52d5\u753b\u3092\u66f8\u304d\u51fa\u3057';
+      }
+    }
+
+    // Export: SRT/VTT
+    async function exportSubtitles() {
+      const format = document.getElementById('exportSubFormat').value;
+      try {
+        const res = await fetch(`${SERVER}/api/export-subtitles`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ subtitles: currentSubtitles, format }),
+        });
+        if (!res.ok) throw new Error('\u30a8\u30af\u30b9\u30dd\u30fc\u30c8\u5931\u6557');
+        const text = await res.text();
+        const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        const baseName = currentFilename.replace(/\.[^.]+$/, '');
+        a.href = url;
+        a.download = `${baseName}.${format}`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        showToast();
+      } catch (error) {
+        document.getElementById('errorMsg').textContent = `\u30a8\u30e9\u30fc: ${error.message}`;
+      }
+    }
+
+    // Export: Thumbnail
+    async function generateThumbnail() {
+      const time = parseFloat(document.getElementById('thumbTime').value) || 0;
+      const result = document.getElementById('thumbResult');
+      result.innerHTML = '<div style="color:#888; font-size:12px; margin-top:8px">\u751f\u6210\u4e2d...</div>';
+      try {
+        const res = await fetch(`${SERVER}/api/thumbnail`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ filename: currentFilename, time }),
+        });
+        if (!res.ok) { const err = await res.json(); throw new Error(err.error); }
+        const data = await res.json();
+        result.innerHTML = `
+          <div class="thumb-preview">
+            <img src="${SERVER}/${data.path}?t=${Date.now()}" alt="\u30b5\u30e0\u30cd\u30a4\u30eb">
+          </div>
+          <a class="download-link" href="${SERVER}/${data.path}" download="${data.filename}">\u2b07 ${data.filename} \u3092\u30c0\u30a6\u30f3\u30ed\u30fc\u30c9</a>
+        `;
+      } catch (error) {
+        result.innerHTML = `<div style="color:#ef4444; font-size:12px; margin-top:8px">\u274c ${error.message}</div>`;
+      }
+    }
+
+    // Project Save/Load
+    function downloadProject() {
+      const project = {
+        version: 1,
+        filename: currentFilename,
+        subtitles: currentSubtitles,
+        style: currentStyle,
+        audioTracks: audioTracks,
+        editSettings: editSettings
+      };
+      const blob = new Blob([JSON.stringify(project, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      const baseName = currentFilename ? currentFilename.replace(/\.[^.]+$/, '') : 'project';
+      a.href = url;
+      a.download = `${baseName}_project.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      showToast();
+    }
+
+    function loadProject(input) {
+      const file = input.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function (e) {
+        try {
+          const project = JSON.parse(e.target.result);
+          if (project.subtitles) currentSubtitles = project.subtitles;
+          if (project.style) currentStyle = project.style;
+          if (project.audioTracks) audioTracks = project.audioTracks;
+          if (project.editSettings) editSettings = project.editSettings;
+          if (project.filename) currentFilename = project.filename;
+          takeSnapshot();
+          refreshUI();
+          showToast();
+        } catch (err) {
+          document.getElementById('errorMsg').textContent = 'JSON\u306e\u8aad\u307f\u8fbc\u307f\u306b\u5931\u6557: ' + err.message;
+        }
+      };
+      reader.readAsText(file);
+      input.value = '';
+    }
+
+    // Keyboard Shortcuts
+    document.addEventListener('keydown', function (e) {
+      const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
+      const mod = isMac ? e.metaKey : e.ctrlKey;
+      if (!mod) return;
+
+      if (e.key === 's' || e.key === 'S') {
+        e.preventDefault();
+        saveAll();
+      } else if (e.key === 'z' && !e.shiftKey) {
+        e.preventDefault();
+        undo();
+      } else if ((e.key === 'z' && e.shiftKey) || e.key === 'y') {
+        e.preventDefault();
+        redo();
+      } else if (e.key === 'e' || e.key === 'E') {
+        e.preventDefault();
+        downloadProject();
+      } else if (e.key === 'o' || e.key === 'O') {
+        e.preventDefault();
+        document.getElementById('projectFileInput').click();
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        saveAndOpenStudio();
+      }
+    });
+
+    // Wire takeSnapshot into key changes
+    const origSaveAll = saveAll;
+    saveAll = async function () {
+      takeSnapshot();
+      return origSaveAll();
+    };
+
+    function showToast() {
+      const toast = document.getElementById("saveToast");
+      toast.classList.add("show");
+      setTimeout(() => toast.classList.remove("show"), 2000);
+    }
+  </script>
+</body>
+
+</html>
