@@ -16,70 +16,69 @@
     }
 
     body {
-      font-family: 'Noto Sans JP', sans-serif;
-      background: #0a0a0f;
-      color: #e0e0e0;
+      font-family: 'Inter', 'Noto Sans JP', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: #f5f5f7;
+      color: #1d1d1f;
       min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
     }
 
     .container {
-      max-width: 800px;
+      max-width: 760px;
       margin: 0 auto;
-      padding: 40px 20px;
+      padding: 48px 24px 80px;
     }
 
     h1 {
       text-align: center;
-      font-size: 32px;
-      font-weight: 900;
-      margin-bottom: 8px;
-      background: linear-gradient(135deg, #6366f1, #a855f7, #ec4899);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
+      font-size: 22px;
+      font-weight: 700;
+      margin-bottom: 6px;
+      color: #1d1d1f;
+      letter-spacing: -0.3px;
     }
 
     .subtitle {
       text-align: center;
-      color: #888;
-      margin-bottom: 40px;
-      font-size: 14px;
+      color: #86868b;
+      margin-bottom: 36px;
+      font-size: 13px;
+      font-weight: 400;
     }
 
     /* Upload Area */
     .upload-area {
-      border: 2px dashed #333;
-      border-radius: 16px;
-      padding: 60px 40px;
+      border: 1.5px dashed #c7c7cc;
+      border-radius: 10px;
+      padding: 52px 32px;
       text-align: center;
       cursor: pointer;
-      transition: all 0.3s ease;
-      background: #111118;
-      position: relative;
-      overflow: hidden;
+      transition: border-color 0.2s, background 0.2s;
+      background: #fff;
     }
 
     .upload-area:hover,
     .upload-area.dragover {
-      border-color: #6366f1;
-      background: #15152a;
-      transform: translateY(-2px);
-      box-shadow: 0 8px 30px rgba(99, 102, 241, 0.15);
+      border-color: #3478f6;
+      background: #f0f5ff;
     }
 
     .upload-icon {
-      font-size: 48px;
-      margin-bottom: 16px;
+      font-size: 36px;
+      margin-bottom: 12px;
+      opacity: 0.6;
     }
 
     .upload-text {
-      font-size: 18px;
-      font-weight: 700;
-      margin-bottom: 8px;
+      font-size: 15px;
+      font-weight: 600;
+      color: #1d1d1f;
+      margin-bottom: 6px;
     }
 
     .upload-hint {
-      font-size: 13px;
-      color: #666;
+      font-size: 12px;
+      color: #86868b;
     }
 
     .upload-area input[type="file"] {
@@ -88,7 +87,7 @@
 
     /* Progress */
     .progress-section {
-      margin-top: 32px;
+      margin-top: 28px;
       display: none;
     }
 
@@ -100,31 +99,32 @@
       display: flex;
       align-items: center;
       gap: 12px;
-      padding: 16px;
-      border-radius: 12px;
-      margin-bottom: 8px;
-      background: #111118;
-      transition: all 0.3s ease;
+      padding: 14px 16px;
+      border-radius: 8px;
+      margin-bottom: 6px;
+      background: #fff;
+      transition: background 0.2s;
+      border: 1px solid #e8e8ed;
     }
 
     .step.active {
-      background: #15152a;
-      border: 1px solid #6366f133;
+      background: #f0f5ff;
+      border-color: rgba(52, 120, 246, 0.25);
     }
 
     .step.done {
-      background: #0f1f15;
-      border: 1px solid #22c55e33;
+      background: #f0faf4;
+      border-color: rgba(48, 164, 108, 0.25);
     }
 
     .step.error {
-      background: #1f0f0f;
-      border: 1px solid #ef444433;
+      background: #fef5f5;
+      border-color: rgba(210, 70, 70, 0.25);
     }
 
     .step-icon {
-      font-size: 24px;
-      width: 36px;
+      font-size: 20px;
+      width: 32px;
       text-align: center;
     }
 
@@ -133,24 +133,25 @@
     }
 
     .step-title {
-      font-weight: 700;
-      font-size: 15px;
+      font-weight: 600;
+      font-size: 13px;
+      color: #1d1d1f;
     }
 
     .step-detail {
-      font-size: 12px;
-      color: #888;
+      font-size: 11px;
+      color: #86868b;
       margin-top: 2px;
     }
 
     .spinner {
       display: inline-block;
-      width: 24px;
-      height: 24px;
-      border: 3px solid #333;
-      border-top: 3px solid #6366f1;
+      width: 20px;
+      height: 20px;
+      border: 2px solid #e8e8ed;
+      border-top: 2px solid #3478f6;
       border-radius: 50%;
-      animation: spin 0.8s linear infinite;
+      animation: spin 0.7s linear infinite;
     }
 
     @keyframes spin {
@@ -161,7 +162,7 @@
 
     /* Result */
     .result-section {
-      margin-top: 32px;
+      margin-top: 28px;
       display: none;
     }
 
@@ -170,17 +171,19 @@
     }
 
     .result-card {
-      background: #111118;
-      border-radius: 16px;
-      padding: 24px;
-      border: 1px solid #222;
+      background: #fff;
+      border-radius: 10px;
+      padding: 20px;
+      border: 1px solid #e8e8ed;
     }
 
     .result-title {
-      font-size: 18px;
-      font-weight: 700;
-      margin-bottom: 16px;
-      color: #a855f7;
+      font-size: 13px;
+      font-weight: 600;
+      margin-bottom: 14px;
+      color: #86868b;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
     }
 
     .subtitle-list {
@@ -192,51 +195,54 @@
       display: flex;
       align-items: center;
       gap: 8px;
-      padding: 10px 0;
-      border-bottom: 1px solid #1a1a2a;
-      font-size: 14px;
+      padding: 9px 0;
+      border-bottom: 1px solid #f0f0f2;
+      font-size: 13px;
     }
 
     .subtitle-item .sub-index {
-      color: #555;
-      font-size: 12px;
-      min-width: 24px;
+      color: #aeaeb2;
+      font-size: 11px;
+      min-width: 22px;
       text-align: center;
+      font-weight: 500;
     }
 
     .subtitle-item input[type="text"] {
       flex: 1;
       min-width: 0;
-      background: #1a1a2a;
-      border: 1px solid #333;
-      border-radius: 6px;
-      color: #e0e0e0;
-      padding: 8px 12px;
-      font-size: 14px;
-      font-family: 'Noto Sans JP', sans-serif;
-      transition: border-color 0.2s;
+      background: #f5f5f7;
+      border: 1px solid #d2d2d7;
+      border-radius: 5px;
+      color: #1d1d1f;
+      padding: 7px 10px;
+      font-size: 13px;
+      font-family: 'Inter', 'Noto Sans JP', sans-serif;
+      transition: border-color 0.15s;
     }
 
     .subtitle-item input[type="text"]:focus {
       outline: none;
-      border-color: #6366f1;
+      border-color: #3478f6;
+      background: #fff;
     }
 
     .subtitle-item input[type="number"] {
-      width: 56px;
-      background: #1a1a2a;
-      border: 1px solid #333;
-      border-radius: 6px;
-      color: #6366f1;
-      padding: 8px 4px;
-      font-size: 12px;
-      font-family: monospace;
+      width: 54px;
+      background: #f5f5f7;
+      border: 1px solid #d2d2d7;
+      border-radius: 5px;
+      color: #3478f6;
+      padding: 7px 4px;
+      font-size: 11px;
+      font-family: 'SF Mono', 'Fira Code', monospace;
       text-align: center;
     }
 
     .subtitle-item input[type="number"]:focus {
       outline: none;
-      border-color: #6366f1;
+      border-color: #3478f6;
+      background: #fff;
     }
 
     .seg-pos {
@@ -247,36 +253,36 @@
 
     .seg-pos-label {
       font-size: 10px;
-      color: #555;
+      color: #aeaeb2;
     }
 
     .seg-pos input {
-      width: 40px !important;
-      font-size: 11px !important;
-      padding: 6px 2px !important;
-      color: #a855f7 !important;
+      width: 38px !important;
+      font-size: 10px !important;
+      padding: 5px 2px !important;
+      color: #5856d6 !important;
     }
 
     .btn-style-toggle {
-      background: #1a1a2a;
-      color: #ec4899;
+      background: #f0f0f2;
+      color: #5856d6;
     }
 
     .btn-style-toggle:hover {
-      background: #2a1a2a;
+      background: #e8e8ed;
     }
 
     .seg-style-row {
       display: none;
       grid-column: 1 / -1;
-      background: #0d0d15;
-      border: 1px solid #222;
-      border-radius: 8px;
-      padding: 10px 12px;
+      background: #fafafa;
+      border: 1px solid #e8e8ed;
+      border-radius: 6px;
+      padding: 8px 10px;
       gap: 8px;
       align-items: center;
       flex-wrap: wrap;
-      margin: -4px 0 4px 24px;
+      margin: -2px 0 4px 22px;
     }
 
     .seg-style-row.open {
@@ -285,34 +291,34 @@
 
     .seg-style-row label {
       font-size: 10px;
-      color: #666;
+      color: #86868b;
       margin-right: 2px;
     }
 
     .seg-style-row select {
-      background: #1a1a2a;
-      border: 1px solid #333;
+      background: #f5f5f7;
+      border: 1px solid #d2d2d7;
       border-radius: 4px;
-      color: #e0e0e0;
+      color: #1d1d1f;
       padding: 4px 6px;
       font-size: 11px;
       max-width: 120px;
     }
 
     .seg-style-row input[type="number"] {
-      width: 45px;
-      background: #1a1a2a;
-      border: 1px solid #333;
+      width: 42px;
+      background: #f5f5f7;
+      border: 1px solid #d2d2d7;
       border-radius: 4px;
-      color: #e0e0e0;
+      color: #1d1d1f;
       padding: 4px 4px;
       font-size: 11px;
       text-align: center;
     }
 
     .seg-style-row input[type="color"] {
-      width: 28px;
-      height: 28px;
+      width: 26px;
+      height: 26px;
       border: none;
       border-radius: 4px;
       cursor: pointer;
@@ -326,101 +332,102 @@
       gap: 3px;
     }
 
+    /* ── Section Cards (shared) ── */
+    .audio-card,
+    .edit-card,
+    .visual-card,
+    .telop-card,
+    .export-card,
+    .style-card {
+      background: #fff;
+      border-radius: 10px;
+      padding: 20px;
+      border: 1px solid #e8e8ed;
+      margin-top: 12px;
+    }
+
+    /* Section titles — unified muted style */
+    .audio-title,
+    .edit-title,
+    .visual-title,
+    .visual-title.overlay,
+    .visual-title.filter,
+    .visual-title.kenburns,
+    .telop-title,
+    .export-title,
+    .style-title {
+      font-size: 13px;
+      font-weight: 600;
+      margin-bottom: 14px;
+      color: #86868b;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
     /* Audio Tracks */
-    .audio-card {
-      background: #111118;
-      border-radius: 16px;
-      padding: 24px;
-      border: 1px solid #222;
-      margin-top: 16px;
-    }
-
-    .audio-title {
-      font-size: 18px;
-      font-weight: 700;
-      margin-bottom: 16px;
-      color: #22c55e;
-    }
-
     .audio-item {
       display: flex;
       align-items: center;
       gap: 8px;
-      padding: 10px 0;
-      border-bottom: 1px solid #1a1a2a;
-      font-size: 13px;
+      padding: 9px 0;
+      border-bottom: 1px solid #f0f0f2;
+      font-size: 12px;
     }
 
     .audio-item .audio-name {
       flex: 1;
-      color: #aaa;
+      color: #636366;
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
     }
 
     .audio-item input[type="number"] {
-      width: 55px;
-      background: #1a1a2a;
-      border: 1px solid #333;
-      border-radius: 6px;
-      color: #22c55e;
-      padding: 6px 4px;
-      font-size: 12px;
-      font-family: monospace;
+      width: 52px;
+      background: #f5f5f7;
+      border: 1px solid #d2d2d7;
+      border-radius: 5px;
+      color: #30a46c;
+      padding: 5px 4px;
+      font-size: 11px;
+      font-family: 'SF Mono', 'Fira Code', monospace;
       text-align: center;
     }
 
     .audio-item label {
       font-size: 10px;
-      color: #666;
+      color: #86868b;
     }
 
     .audio-upload-btn {
-      background: #15152a;
-      color: #22c55e;
+      background: #fafafa;
+      color: #30a46c;
       width: 100%;
-      height: 36px;
-      border-radius: 8px;
-      border: 1px dashed #333;
+      height: 34px;
+      border-radius: 6px;
+      border: 1px dashed #c7c7cc;
       cursor: pointer;
-      font-size: 13px;
-      font-weight: 700;
-      font-family: 'Noto Sans JP', sans-serif;
+      font-size: 12px;
+      font-weight: 600;
+      font-family: 'Inter', 'Noto Sans JP', sans-serif;
       margin-top: 8px;
-      transition: all 0.2s;
+      transition: border-color 0.15s;
     }
 
     .audio-upload-btn:hover {
-      border-color: #22c55e;
-      background: #1a2a1a;
+      border-color: #30a46c;
     }
 
     /* Edit Section */
-    .edit-card {
-      background: #111118;
-      border-radius: 16px;
-      padding: 24px;
-      border: 1px solid #222;
-      margin-top: 16px;
-    }
-
-    .edit-title {
-      font-size: 18px;
-      font-weight: 700;
-      margin-bottom: 16px;
-      color: #f59e0b;
-    }
-
     .edit-section {
-      margin-bottom: 20px;
+      margin-bottom: 18px;
     }
 
     .edit-section-title {
-      font-size: 14px;
-      font-weight: 700;
-      color: #ccc;
-      margin-bottom: 10px;
+      font-size: 12px;
+      font-weight: 600;
+      color: #636366;
+      margin-bottom: 8px;
       display: flex;
       align-items: center;
       gap: 6px;
@@ -440,32 +447,33 @@
     }
 
     .edit-field label {
-      font-size: 12px;
-      color: #888;
+      font-size: 11px;
+      color: #86868b;
     }
 
     .edit-field input[type="number"],
     .edit-field select {
-      background: #1a1a2a;
-      border: 1px solid #333;
-      border-radius: 6px;
-      color: #f59e0b;
-      padding: 8px 8px;
-      font-size: 13px;
-      font-family: monospace;
-      width: 70px;
+      background: #f5f5f7;
+      border: 1px solid #d2d2d7;
+      border-radius: 5px;
+      color: #b45309;
+      padding: 7px 6px;
+      font-size: 12px;
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      width: 66px;
       text-align: center;
     }
 
     .edit-field input:focus,
     .edit-field select:focus {
       outline: none;
-      border-color: #f59e0b;
+      border-color: #b45309;
+      background: #fff;
     }
 
     .edit-hint {
       font-size: 11px;
-      color: #555;
+      color: #aeaeb2;
       margin-top: 4px;
     }
 
@@ -474,36 +482,35 @@
       align-items: center;
       gap: 8px;
       padding: 8px 0;
-      border-bottom: 1px solid #1a1a2a;
-      font-size: 13px;
+      border-bottom: 1px solid #f0f0f2;
+      font-size: 12px;
     }
 
     .merge-item .merge-name {
       flex: 1;
-      color: #aaa;
+      color: #636366;
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
     }
 
     .merge-upload-btn {
-      background: #15152a;
-      color: #f59e0b;
+      background: #fafafa;
+      color: #b45309;
       width: 100%;
-      height: 36px;
-      border-radius: 8px;
-      border: 1px dashed #333;
+      height: 34px;
+      border-radius: 6px;
+      border: 1px dashed #c7c7cc;
       cursor: pointer;
-      font-size: 13px;
-      font-weight: 700;
-      font-family: 'Noto Sans JP', sans-serif;
+      font-size: 12px;
+      font-weight: 600;
+      font-family: 'Inter', 'Noto Sans JP', sans-serif;
       margin-top: 8px;
-      transition: all 0.2s;
+      transition: border-color 0.15s;
     }
 
     .merge-upload-btn:hover {
-      border-color: #f59e0b;
-      background: #2a2a1a;
+      border-color: #b45309;
     }
 
     .speed-presets {
@@ -513,97 +520,73 @@
     }
 
     .speed-preset-btn {
-      padding: 6px 12px;
-      border: 1px solid #333;
-      border-radius: 6px;
-      background: #1a1a2a;
-      color: #888;
-      font-size: 12px;
+      padding: 5px 10px;
+      border: 1px solid #d2d2d7;
+      border-radius: 5px;
+      background: #f5f5f7;
+      color: #86868b;
+      font-size: 11px;
       cursor: pointer;
-      font-family: monospace;
-      transition: all 0.2s;
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      transition: all 0.15s;
     }
 
     .speed-preset-btn:hover {
-      border-color: #f59e0b;
-      color: #f59e0b;
+      border-color: #b45309;
+      color: #b45309;
     }
 
     .speed-preset-btn.active {
-      background: #f59e0b;
-      color: #000;
-      border-color: #f59e0b;
+      background: #b45309;
+      color: #fff;
+      border-color: #b45309;
+      font-weight: 600;
     }
 
-    /* Visual Effects */
-    .visual-card {
-      background: #111118;
-      border-radius: 16px;
-      padding: 24px;
-      border: 1px solid #222;
-      margin-top: 16px;
-    }
-
-    .visual-title {
-      font-size: 18px;
-      font-weight: 700;
-      margin-bottom: 16px;
-    }
-
-    .visual-title.overlay {
-      color: #a855f7;
-    }
-
-    .visual-title.filter {
-      color: #06b6d4;
-    }
-
-    .visual-title.kenburns {
-      color: #f472b6;
-    }
-
+    /* Filter / Color */
     .filter-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 12px;
+      gap: 10px;
     }
 
     .filter-item {
       display: flex;
       flex-direction: column;
-      gap: 4px;
+      gap: 3px;
     }
 
     .filter-item label {
       font-size: 11px;
-      color: #888;
+      color: #636366;
       display: flex;
       justify-content: space-between;
     }
 
     .filter-item label span {
-      color: #06b6d4;
-      font-family: monospace;
+      color: #0e7490;
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      font-size: 10px;
     }
 
     .filter-item input[type="range"] {
       width: 100%;
-      accent-color: #06b6d4;
-      height: 6px;
+      accent-color: #0e7490;
+      height: 4px;
     }
 
     .overlay-item {
       display: flex;
       align-items: center;
       gap: 8px;
-      padding: 10px 0;
-      border-bottom: 1px solid #1a1a2a;
+      padding: 9px 0;
+      border-bottom: 1px solid #f0f0f2;
       font-size: 12px;
       flex-wrap: wrap;
     }
 
     .overlay-item .overlay-name {
-      color: #a855f7;
+      color: #5856d6;
       min-width: 80px;
       overflow: hidden;
       text-overflow: ellipsis;
@@ -612,46 +595,45 @@
 
     .overlay-item input[type="number"],
     .overlay-item select {
-      width: 50px;
-      background: #1a1a2a;
-      border: 1px solid #333;
+      width: 48px;
+      background: #f5f5f7;
+      border: 1px solid #d2d2d7;
       border-radius: 4px;
-      color: #e0e0e0;
+      color: #1d1d1f;
       padding: 4px 3px;
-      font-size: 11px;
-      font-family: monospace;
+      font-size: 10px;
+      font-family: 'SF Mono', 'Fira Code', monospace;
       text-align: center;
     }
 
     .overlay-item label {
       font-size: 10px;
-      color: #666;
+      color: #86868b;
     }
 
     .overlay-upload-btn {
-      background: #15152a;
-      color: #a855f7;
+      background: #fafafa;
+      color: #5856d6;
       width: 100%;
-      height: 36px;
-      border-radius: 8px;
-      border: 1px dashed #333;
+      height: 34px;
+      border-radius: 6px;
+      border: 1px dashed #c7c7cc;
       cursor: pointer;
-      font-size: 13px;
-      font-weight: 700;
-      font-family: 'Noto Sans JP', sans-serif;
+      font-size: 12px;
+      font-weight: 600;
+      font-family: 'Inter', 'Noto Sans JP', sans-serif;
       margin-top: 8px;
-      transition: all 0.2s;
+      transition: border-color 0.15s;
     }
 
     .overlay-upload-btn:hover {
-      border-color: #a855f7;
-      background: #1a1a2a;
+      border-color: #5856d6;
     }
 
     .kb-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 12px;
+      gap: 10px;
     }
 
     .kb-field {
@@ -661,67 +643,53 @@
     }
 
     .kb-field label {
-      font-size: 12px;
-      color: #888;
-      min-width: 40px;
+      font-size: 11px;
+      color: #86868b;
+      min-width: 38px;
     }
 
     .kb-field input {
-      width: 60px;
-      background: #1a1a2a;
-      border: 1px solid #333;
-      border-radius: 6px;
-      color: #f472b6;
-      padding: 8px 6px;
-      font-size: 13px;
-      font-family: monospace;
+      width: 58px;
+      background: #f5f5f7;
+      border: 1px solid #d2d2d7;
+      border-radius: 5px;
+      color: #a3366b;
+      padding: 7px 6px;
+      font-size: 12px;
+      font-family: 'SF Mono', 'Fira Code', monospace;
       text-align: center;
     }
 
     .kb-field input:focus {
       outline: none;
-      border-color: #f472b6;
+      border-color: #a3366b;
+      background: #fff;
     }
 
     .btn-reset {
-      background: #1a1a2a;
-      color: #888;
-      border: 1px solid #333;
-      padding: 6px 14px;
-      border-radius: 6px;
-      font-size: 12px;
+      background: #f5f5f7;
+      color: #86868b;
+      border: 1px solid #d2d2d7;
+      padding: 5px 12px;
+      border-radius: 5px;
+      font-size: 11px;
       cursor: pointer;
-      font-family: 'Noto Sans JP', sans-serif;
-      transition: all 0.2s;
+      font-family: 'Inter', 'Noto Sans JP', sans-serif;
+      transition: all 0.15s;
     }
 
     .btn-reset:hover {
-      color: #06b6d4;
-      border-color: #06b6d4;
+      color: #0e7490;
+      border-color: #0e7490;
     }
 
     /* Telop */
-    .telop-card {
-      background: #111118;
-      border-radius: 16px;
-      padding: 24px;
-      border: 1px solid #222;
-      margin-top: 16px;
-    }
-
-    .telop-title {
-      font-size: 18px;
-      font-weight: 700;
-      margin-bottom: 16px;
-      color: #facc15;
-    }
-
     .telop-item {
-      background: #0d0d15;
-      border: 1px solid #222;
-      border-radius: 10px;
-      padding: 12px;
-      margin-bottom: 8px;
+      background: #fafafa;
+      border: 1px solid #e8e8ed;
+      border-radius: 8px;
+      padding: 10px;
+      margin-bottom: 6px;
     }
 
     .telop-top {
@@ -734,42 +702,43 @@
     .telop-top input[type="text"] {
       flex: 1;
       min-width: 120px;
-      background: #1a1a2a;
-      border: 1px solid #333;
-      border-radius: 6px;
-      color: #facc15;
-      padding: 8px 10px;
-      font-size: 14px;
-      font-family: 'Noto Sans JP', sans-serif;
+      background: #f5f5f7;
+      border: 1px solid #d2d2d7;
+      border-radius: 5px;
+      color: #b45309;
+      padding: 7px 10px;
+      font-size: 13px;
+      font-family: 'Inter', 'Noto Sans JP', sans-serif;
     }
 
     .telop-top input[type="text"]:focus {
       outline: none;
-      border-color: #facc15;
+      border-color: #b45309;
+      background: #fff;
     }
 
     .telop-top input[type="number"] {
-      width: 55px;
-      background: #1a1a2a;
-      border: 1px solid #333;
-      border-radius: 6px;
-      color: #e0e0e0;
-      padding: 6px 4px;
-      font-size: 12px;
-      font-family: monospace;
+      width: 52px;
+      background: #f5f5f7;
+      border: 1px solid #d2d2d7;
+      border-radius: 5px;
+      color: #1d1d1f;
+      padding: 5px 4px;
+      font-size: 11px;
+      font-family: 'SF Mono', 'Fira Code', monospace;
       text-align: center;
     }
 
     .telop-top label {
       font-size: 10px;
-      color: #666;
+      color: #86868b;
     }
 
     .telop-style {
       display: none;
-      margin-top: 10px;
-      padding-top: 10px;
-      border-top: 1px solid #1a1a2a;
+      margin-top: 8px;
+      padding-top: 8px;
+      border-top: 1px solid #e8e8ed;
       gap: 8px;
       flex-wrap: wrap;
       align-items: center;
@@ -781,10 +750,10 @@
 
     .telop-style select,
     .telop-style input[type="number"] {
-      background: #1a1a2a;
-      border: 1px solid #333;
+      background: #f5f5f7;
+      border: 1px solid #d2d2d7;
       border-radius: 4px;
-      color: #e0e0e0;
+      color: #1d1d1f;
       padding: 4px 6px;
       font-size: 11px;
     }
@@ -799,8 +768,8 @@
     }
 
     .telop-style input[type="color"] {
-      width: 28px;
-      height: 28px;
+      width: 26px;
+      height: 26px;
       border: none;
       border-radius: 4px;
       cursor: pointer;
@@ -810,7 +779,7 @@
 
     .telop-style label {
       font-size: 10px;
-      color: #666;
+      color: #86868b;
     }
 
     .telop-style .tsf {
@@ -820,49 +789,33 @@
     }
 
     .telop-add-btn {
-      background: #15152a;
-      color: #facc15;
+      background: #fafafa;
+      color: #b45309;
       width: 100%;
-      height: 40px;
-      border-radius: 8px;
-      border: 1px dashed #333;
+      height: 36px;
+      border-radius: 6px;
+      border: 1px dashed #c7c7cc;
       cursor: pointer;
-      font-size: 14px;
-      font-weight: 700;
-      font-family: 'Noto Sans JP', sans-serif;
-      transition: all 0.2s;
+      font-size: 12px;
+      font-weight: 600;
+      font-family: 'Inter', 'Noto Sans JP', sans-serif;
+      transition: border-color 0.15s;
     }
 
     .telop-add-btn:hover {
-      border-color: #facc15;
-      background: #2a2a1a;
+      border-color: #b45309;
     }
 
     /* Export Section */
-    .export-card {
-      background: #111118;
-      border-radius: 16px;
-      padding: 24px;
-      border: 1px solid #222;
-      margin-top: 16px;
-    }
-
-    .export-title {
-      font-size: 18px;
-      font-weight: 700;
-      margin-bottom: 16px;
-      color: #ef4444;
-    }
-
     .export-section {
-      margin-bottom: 20px;
+      margin-bottom: 18px;
     }
 
     .export-section-title {
-      font-size: 14px;
-      font-weight: 700;
-      color: #ccc;
-      margin-bottom: 10px;
+      font-size: 12px;
+      font-weight: 600;
+      color: #636366;
+      margin-bottom: 8px;
       display: flex;
       align-items: center;
       gap: 6px;
@@ -876,77 +829,74 @@
     }
 
     .export-btn {
-      padding: 10px 20px;
-      border-radius: 8px;
-      font-size: 13px;
-      font-weight: 700;
+      padding: 8px 16px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 600;
       cursor: pointer;
-      font-family: 'Noto Sans JP', sans-serif;
-      transition: all 0.2s;
+      font-family: 'Inter', 'Noto Sans JP', sans-serif;
+      transition: all 0.15s;
       border: none;
     }
 
     .export-btn.render {
-      background: linear-gradient(135deg, #ef4444, #f97316);
+      background: #3478f6;
       color: white;
     }
 
     .export-btn.render:hover {
-      transform: scale(1.02);
-      box-shadow: 0 4px 15px rgba(239, 68, 68, 0.4);
+      background: #2563eb;
     }
 
     .export-btn.render:disabled {
-      opacity: 0.5;
+      opacity: 0.4;
       cursor: not-allowed;
-      transform: none;
-      box-shadow: none;
     }
 
     .export-btn.sub {
-      background: #1a1a2a;
-      color: #22c55e;
-      border: 1px solid #333;
+      background: #f0faf4;
+      color: #15803d;
+      border: 1px solid #bbf7d0;
     }
 
     .export-btn.sub:hover {
-      border-color: #22c55e;
+      border-color: #15803d;
     }
 
     .export-btn.thumb {
-      background: #1a1a2a;
-      color: #a855f7;
-      border: 1px solid #333;
+      background: #f0f0ff;
+      color: #5856d6;
+      border: 1px solid #c7c7f0;
     }
 
     .export-btn.thumb:hover {
-      border-color: #a855f7;
+      border-color: #5856d6;
     }
 
     .export-field input[type="number"] {
-      width: 65px;
-      background: #1a1a2a;
-      border: 1px solid #333;
-      border-radius: 6px;
-      color: #a855f7;
-      padding: 8px 8px;
-      font-size: 13px;
-      font-family: monospace;
+      width: 60px;
+      background: #f5f5f7;
+      border: 1px solid #d2d2d7;
+      border-radius: 5px;
+      color: #5856d6;
+      padding: 7px 6px;
+      font-size: 12px;
+      font-family: 'SF Mono', 'Fira Code', monospace;
       text-align: center;
     }
 
     .export-field label {
-      font-size: 12px;
-      color: #888;
+      font-size: 11px;
+      color: #86868b;
     }
 
     .export-field select {
-      background: #1a1a2a;
-      border: 1px solid #333;
-      border-radius: 6px;
-      color: #22c55e;
-      padding: 8px 12px;
-      font-size: 13px;
+      background: #f5f5f7;
+      border: 1px solid #d2d2d7;
+      border-radius: 5px;
+      color: #15803d;
+      padding: 7px 10px;
+      font-size: 12px;
     }
 
     .export-field {
@@ -956,25 +906,25 @@
     }
 
     .render-status {
-      font-size: 13px;
-      color: #888;
+      font-size: 12px;
+      color: #86868b;
       margin-top: 8px;
     }
 
     .render-status.success {
-      color: #22c55e;
+      color: #15803d;
     }
 
     .render-status.error {
-      color: #ef4444;
+      color: #dc2626;
     }
 
     .thumb-preview {
       margin-top: 10px;
-      max-width: 320px;
-      border-radius: 8px;
+      max-width: 300px;
+      border-radius: 6px;
       overflow: hidden;
-      border: 1px solid #333;
+      border: 1px solid #e8e8ed;
     }
 
     .thumb-preview img {
@@ -986,8 +936,8 @@
       display: inline-flex;
       align-items: center;
       gap: 4px;
-      color: #22c55e;
-      font-size: 13px;
+      color: #15803d;
+      font-size: 12px;
       text-decoration: none;
       margin-top: 6px;
     }
@@ -998,108 +948,102 @@
 
     /* Utility Bar */
     .utility-bar {
-      background: #111118;
-      border-radius: 16px;
-      padding: 16px 24px;
-      border: 1px solid #222;
-      margin-top: 16px;
+      background: #fff;
+      border-radius: 8px;
+      padding: 12px 16px;
+      border: 1px solid #e8e8ed;
+      margin-top: 12px;
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 6px;
       flex-wrap: wrap;
     }
 
     .utility-title {
-      font-size: 14px;
-      font-weight: 700;
-      color: #888;
-      margin-right: 8px;
+      font-size: 12px;
+      font-weight: 600;
+      color: #86868b;
+      margin-right: 6px;
     }
 
     .util-btn {
-      padding: 8px 14px;
-      border-radius: 8px;
-      font-size: 12px;
-      font-weight: 700;
+      padding: 6px 12px;
+      border-radius: 5px;
+      font-size: 11px;
+      font-weight: 600;
       cursor: pointer;
-      font-family: 'Noto Sans JP', sans-serif;
-      transition: all 0.2s;
-      border: 1px solid #333;
-      background: #1a1a2a;
-      color: #888;
+      font-family: 'Inter', 'Noto Sans JP', sans-serif;
+      transition: all 0.15s;
+      border: 1px solid #d2d2d7;
+      background: #f5f5f7;
+      color: #636366;
     }
 
     .util-btn:hover {
-      color: #e0e0e0;
-      border-color: #555;
+      color: #1d1d1f;
+      border-color: #aeaeb2;
     }
 
     .util-btn:disabled {
-      opacity: 0.3;
+      opacity: 0.25;
       cursor: not-allowed;
     }
 
-    .util-btn.undo {
-      color: #60a5fa;
-    }
-
-    .util-btn.undo:hover {
-      border-color: #60a5fa;
-    }
-
+    .util-btn.undo,
     .util-btn.redo {
-      color: #60a5fa;
+      color: #3478f6;
     }
 
+    .util-btn.undo:hover,
     .util-btn.redo:hover {
-      border-color: #60a5fa;
+      border-color: #3478f6;
     }
 
     .util-btn.project-save {
-      color: #22c55e;
+      color: #15803d;
     }
 
     .util-btn.project-save:hover {
-      border-color: #22c55e;
+      border-color: #15803d;
     }
 
     .util-btn.project-load {
-      color: #f59e0b;
+      color: #b45309;
     }
 
     .util-btn.project-load:hover {
-      border-color: #f59e0b;
+      border-color: #b45309;
     }
 
     .util-btn.shortcut-help {
-      color: #a855f7;
+      color: #5856d6;
     }
 
     .util-btn.shortcut-help:hover {
-      border-color: #a855f7;
+      border-color: #5856d6;
     }
 
     .util-sep {
       width: 1px;
-      height: 24px;
-      background: #333;
-      margin: 0 4px;
+      height: 20px;
+      background: #e8e8ed;
+      margin: 0 2px;
     }
 
     .undo-count {
       font-size: 10px;
-      color: #555;
-      font-family: monospace;
+      color: #aeaeb2;
+      font-family: 'SF Mono', 'Fira Code', monospace;
     }
 
     .shortcut-panel {
       display: none;
-      background: #111118;
-      border: 1px solid #333;
-      border-radius: 12px;
-      padding: 16px 20px;
-      margin-top: 8px;
-      font-size: 12px;
+      background: #fff;
+      border: 1px solid #e8e8ed;
+      border-radius: 8px;
+      padding: 14px 16px;
+      margin-top: 6px;
+      font-size: 11px;
     }
 
     .shortcut-panel.open {
@@ -1112,67 +1056,66 @@
     }
 
     .shortcut-panel td {
-      padding: 4px 8px;
-      border-bottom: 1px solid #1a1a2a;
+      padding: 3px 8px;
+      border-bottom: 1px solid #f0f0f2;
     }
 
     .shortcut-panel td:first-child {
-      color: #a855f7;
-      font-family: monospace;
-      font-weight: 700;
+      color: #5856d6;
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      font-weight: 600;
       white-space: nowrap;
     }
 
     .shortcut-panel td:last-child {
-      color: #888;
+      color: #86868b;
     }
 
     .time-sep {
-      color: #555;
-      font-size: 12px;
+      color: #aeaeb2;
+      font-size: 11px;
     }
 
     .btn-icon {
-      width: 32px;
-      height: 32px;
-      border-radius: 6px;
+      width: 28px;
+      height: 28px;
+      border-radius: 5px;
       border: none;
       cursor: pointer;
-      font-size: 14px;
+      font-size: 13px;
       display: flex;
       align-items: center;
       justify-content: center;
-      transition: all 0.2s;
+      transition: background 0.15s;
       flex-shrink: 0;
     }
 
     .btn-delete {
-      background: #2a1515;
-      color: #ef4444;
+      background: #fef2f2;
+      color: #dc2626;
     }
 
     .btn-delete:hover {
-      background: #3a1515;
+      background: #fee2e2;
     }
 
     .btn-add {
-      background: #15152a;
-      color: #6366f1;
+      background: #fafafa;
+      color: #3478f6;
       width: 100%;
-      height: 36px;
-      border-radius: 8px;
-      border: 1px dashed #333;
+      height: 34px;
+      border-radius: 6px;
+      border: 1px dashed #c7c7cc;
       cursor: pointer;
-      font-size: 13px;
-      font-weight: 700;
-      font-family: 'Noto Sans JP', sans-serif;
+      font-size: 12px;
+      font-weight: 600;
+      font-family: 'Inter', 'Noto Sans JP', sans-serif;
       margin-top: 8px;
-      transition: all 0.2s;
+      transition: border-color 0.15s;
     }
 
     .btn-add:hover {
-      border-color: #6366f1;
-      background: #1a1a3a;
+      border-color: #3478f6;
     }
 
     .save-toast {
@@ -1180,13 +1123,13 @@
       bottom: 24px;
       left: 50%;
       transform: translateX(-50%) translateY(100px);
-      background: #22c55e;
-      color: #000;
-      padding: 12px 28px;
-      border-radius: 10px;
-      font-weight: 700;
-      font-size: 14px;
-      transition: transform 0.3s ease;
+      background: #15803d;
+      color: #fff;
+      padding: 10px 24px;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 13px;
+      transition: transform 0.25s ease;
       z-index: 100;
     }
 
@@ -1195,122 +1138,109 @@
     }
 
     .btn-save {
-      background: linear-gradient(135deg, #22c55e, #16a34a);
+      background: #15803d;
       color: white;
     }
 
     .btn-save:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 6px 20px rgba(34, 197, 94, 0.3);
+      background: #166534;
     }
 
     .actions {
-      margin-top: 24px;
+      margin-top: 20px;
       display: flex;
-      gap: 12px;
+      gap: 8px;
       justify-content: center;
     }
 
     .btn {
-      padding: 12px 28px;
-      border-radius: 10px;
+      padding: 10px 22px;
+      border-radius: 7px;
       border: none;
-      font-size: 15px;
-      font-weight: 700;
+      font-size: 13px;
+      font-weight: 600;
       cursor: pointer;
-      transition: all 0.3s ease;
-      font-family: 'Noto Sans JP', sans-serif;
+      transition: all 0.15s;
+      font-family: 'Inter', 'Noto Sans JP', sans-serif;
     }
 
     .btn-primary {
-      background: linear-gradient(135deg, #6366f1, #a855f7);
+      background: #3478f6;
       color: white;
     }
 
     .btn-primary:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 6px 20px rgba(99, 102, 241, 0.3);
+      background: #2563eb;
     }
 
     .btn-secondary {
-      background: #222;
-      color: #ccc;
+      background: #f5f5f7;
+      color: #636366;
+      border: 1px solid #d2d2d7;
     }
 
     .btn-secondary:hover {
-      background: #333;
+      background: #e8e8ed;
+      color: #1d1d1f;
     }
 
     .error-msg {
-      color: #ef4444;
+      color: #dc2626;
       text-align: center;
-      margin-top: 16px;
-      font-size: 14px;
+      margin-top: 14px;
+      font-size: 13px;
     }
 
     /* Video Preview */
     .video-preview {
-      margin-top: 24px;
-      border-radius: 12px;
+      margin-top: 20px;
+      border-radius: 8px;
       overflow: hidden;
       background: #000;
+      border: 1px solid #e8e8ed;
     }
 
     .video-preview video {
       width: 100%;
-      max-height: 400px;
+      max-height: 380px;
       display: block;
     }
 
     /* Style Settings */
-    .style-card {
-      background: #111118;
-      border-radius: 16px;
-      padding: 24px;
-      border: 1px solid #222;
-      margin-top: 16px;
-    }
-
-    .style-title {
-      font-size: 18px;
-      font-weight: 700;
-      margin-bottom: 16px;
-      color: #ec4899;
-    }
-
     .style-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 16px;
+      gap: 14px;
     }
 
     .style-field {
       display: flex;
       flex-direction: column;
-      gap: 6px;
+      gap: 5px;
     }
 
     .style-field label {
-      font-size: 12px;
-      color: #888;
-      font-weight: 700;
+      font-size: 11px;
+      color: #636366;
+      font-weight: 600;
     }
 
     .style-field select,
     .style-field input[type="number"] {
-      background: #1a1a2a;
-      border: 1px solid #333;
-      border-radius: 8px;
-      color: #e0e0e0;
-      padding: 10px 12px;
-      font-size: 14px;
-      font-family: 'Noto Sans JP', sans-serif;
+      background: #f5f5f7;
+      border: 1px solid #d2d2d7;
+      border-radius: 5px;
+      color: #1d1d1f;
+      padding: 8px 10px;
+      font-size: 13px;
+      font-family: 'Inter', 'Noto Sans JP', sans-serif;
     }
 
     .style-field select:focus,
     .style-field input[type="number"]:focus {
       outline: none;
-      border-color: #6366f1;
+      border-color: #3478f6;
+      background: #fff;
     }
 
     .color-row {
@@ -1320,59 +1250,59 @@
     }
 
     .color-row input[type="color"] {
-      width: 40px;
-      height: 40px;
+      width: 36px;
+      height: 36px;
       border: none;
-      border-radius: 8px;
+      border-radius: 6px;
       cursor: pointer;
       background: transparent;
     }
 
     .color-row .color-hex {
-      background: #1a1a2a;
-      border: 1px solid #333;
-      border-radius: 8px;
-      color: #e0e0e0;
-      padding: 10px 12px;
-      font-size: 14px;
-      font-family: monospace;
-      width: 100px;
+      background: #f5f5f7;
+      border: 1px solid #d2d2d7;
+      border-radius: 5px;
+      color: #1d1d1f;
+      padding: 8px 10px;
+      font-size: 13px;
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      width: 95px;
     }
 
     .pos-buttons {
       display: flex;
-      gap: 4px;
+      gap: 3px;
     }
 
     .pos-btn {
       flex: 1;
-      padding: 10px 0;
-      border: 1px solid #333;
-      border-radius: 8px;
-      background: #1a1a2a;
-      color: #888;
-      font-size: 13px;
-      font-weight: 700;
+      padding: 8px 0;
+      border: 1px solid #d2d2d7;
+      border-radius: 5px;
+      background: #f5f5f7;
+      color: #636366;
+      font-size: 12px;
+      font-weight: 600;
       cursor: pointer;
-      font-family: 'Noto Sans JP', sans-serif;
-      transition: all 0.2s;
+      font-family: 'Inter', 'Noto Sans JP', sans-serif;
+      transition: all 0.15s;
     }
 
     .pos-btn.active {
-      background: #6366f1;
+      background: #3478f6;
       color: white;
-      border-color: #6366f1;
+      border-color: #3478f6;
     }
 
     .pos-btn:hover:not(.active) {
-      border-color: #555;
+      border-color: #aeaeb2;
     }
 
     .style-preview {
-      margin-top: 16px;
-      background: #000;
-      border-radius: 12px;
-      height: 100px;
+      margin-top: 14px;
+      background: #1d1d1f;
+      border-radius: 8px;
+      height: 90px;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -1381,10 +1311,10 @@
     }
 
     .style-preview-text {
-      padding: 8px 20px;
-      border-radius: 8px;
+      padding: 6px 16px;
+      border-radius: 6px;
       text-align: center;
-      transition: all 0.2s;
+      transition: all 0.15s;
     }
 
     .toggle-row {
@@ -1394,10 +1324,10 @@
     }
 
     .toggle {
-      width: 44px;
-      height: 24px;
-      border-radius: 12px;
-      background: #333;
+      width: 40px;
+      height: 22px;
+      border-radius: 11px;
+      background: #d2d2d7;
       position: relative;
       cursor: pointer;
       transition: background 0.2s;
@@ -1405,7 +1335,7 @@
     }
 
     .toggle.active {
-      background: #6366f1;
+      background: #3478f6;
     }
 
     .toggle::after {
@@ -1413,23 +1343,418 @@
       position: absolute;
       top: 3px;
       left: 3px;
-      width: 18px;
-      height: 18px;
+      width: 16px;
+      height: 16px;
       border-radius: 50%;
       background: white;
       transition: transform 0.2s;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
     }
 
     .toggle.active::after {
-      transform: translateX(20px);
+      transform: translateX(18px);
+    }
+
+    /* ── Tab Navigation ── */
+    .tab-nav {
+      display: flex;
+      gap: 2px;
+      background: #fff;
+      border: 1px solid #e8e8ed;
+      border-radius: 10px;
+      padding: 4px;
+      margin-bottom: 12px;
+      position: sticky;
+      top: 0;
+      z-index: 50;
+    }
+
+    .tab-btn {
+      flex: 1;
+      padding: 10px 8px;
+      border: none;
+      border-radius: 7px;
+      background: transparent;
+      color: #86868b;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: 'Inter', 'Noto Sans JP', sans-serif;
+      transition: all 0.15s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      white-space: nowrap;
+    }
+
+    .tab-btn:hover {
+      color: #1d1d1f;
+      background: #f5f5f7;
+    }
+
+    .tab-btn.active {
+      background: #3478f6;
+      color: #fff;
+      box-shadow: 0 1px 3px rgba(52, 120, 246, 0.3);
+    }
+
+    .tab-btn .tab-icon {
+      font-size: 14px;
+    }
+
+    .tab-panel {
+      display: none;
+    }
+
+    .tab-panel.active {
+      display: block;
+    }
+
+    /* ══════════════════════════════════════
+       Responsive — Tablet (≤768px)
+       ══════════════════════════════════════ */
+    @media (max-width: 768px) {
+      .container {
+        padding: 32px 16px 60px;
+      }
+
+      h1 {
+        font-size: 20px;
+      }
+
+      /* Grids → single column */
+      .style-grid,
+      .filter-grid,
+      .kb-grid {
+        grid-template-columns: 1fr;
+        gap: 10px;
+      }
+
+      .style-field[style*="grid-column"] {
+        grid-column: auto !important;
+      }
+
+      /* Subtitle items — stack vertically */
+      .subtitle-item {
+        flex-wrap: wrap;
+        gap: 6px;
+        padding: 10px 0;
+      }
+
+      .subtitle-item input[type="text"] {
+        flex-basis: 100%;
+        order: 2;
+      }
+
+      .subtitle-item .sub-index {
+        order: 0;
+      }
+
+      /* Edit fields */
+      .edit-row {
+        gap: 8px;
+      }
+
+      /* Actions — stack buttons on tablet */
+      .actions {
+        flex-wrap: wrap;
+      }
+
+      .actions .btn {
+        flex: 1;
+        min-width: 120px;
+      }
+
+      /* Utility bar scroll */
+      .utility-bar {
+        gap: 4px;
+        padding: 10px 12px;
+      }
+
+      /* Export buttons wider */
+      .export-btn {
+        padding: 10px 16px;
+      }
+
+      /* Speed presets wrap nicely */
+      .speed-presets {
+        flex-wrap: wrap;
+      }
+
+      /* Tab nav — smaller on tablet */
+      .tab-nav {
+        gap: 1px;
+        padding: 3px;
+      }
+
+      .tab-btn {
+        padding: 8px 6px;
+        font-size: 11px;
+      }
+    }
+
+    /* ══════════════════════════════════════
+       Responsive — Phone (≤480px)
+       ══════════════════════════════════════ */
+    @media (max-width: 480px) {
+      .container {
+        padding: 24px 12px 48px;
+      }
+
+      h1 {
+        font-size: 18px;
+      }
+
+      .subtitle {
+        font-size: 12px;
+        margin-bottom: 24px;
+      }
+
+      /* Upload area smaller */
+      .upload-area {
+        padding: 36px 16px;
+      }
+
+      .upload-icon {
+        font-size: 28px;
+        margin-bottom: 8px;
+      }
+
+      .upload-text {
+        font-size: 14px;
+      }
+
+      .upload-hint {
+        font-size: 11px;
+      }
+
+      /* Cards tighter */
+      .audio-card,
+      .edit-card,
+      .visual-card,
+      .telop-card,
+      .export-card,
+      .style-card,
+      .result-card {
+        padding: 14px;
+      }
+
+      /* Subtitle items fully stacked */
+      .subtitle-item {
+        font-size: 12px;
+        padding: 8px 0;
+      }
+
+      .subtitle-item input[type="text"] {
+        padding: 8px;
+        font-size: 14px;
+        /* bigger for mobile input */
+      }
+
+      .subtitle-item input[type="number"] {
+        width: 48px;
+        padding: 6px 2px;
+        font-size: 12px;
+      }
+
+      /* Telop items */
+      .telop-top {
+        gap: 6px;
+      }
+
+      .telop-top input[type="text"] {
+        font-size: 14px;
+        padding: 8px;
+      }
+
+      /* Style fields — bigger inputs for touch */
+      .style-field select,
+      .style-field input[type="number"] {
+        padding: 10px;
+        font-size: 14px;
+      }
+
+      .color-row input[type="color"] {
+        width: 40px;
+        height: 40px;
+      }
+
+      .color-row .color-hex {
+        padding: 10px;
+        font-size: 14px;
+        width: 100px;
+      }
+
+      /* Position buttons bigger for touch */
+      .pos-btn {
+        padding: 10px 0;
+        font-size: 13px;
+      }
+
+      /* Edit fields — slightly bigger */
+      .edit-field input[type="number"],
+      .edit-field select {
+        padding: 8px 6px;
+        font-size: 13px;
+        width: 60px;
+      }
+
+      .edit-field label {
+        font-size: 12px;
+      }
+
+      /* Toggle bigger for touch */
+      .toggle {
+        width: 44px;
+        height: 24px;
+        border-radius: 12px;
+      }
+
+      .toggle::after {
+        width: 18px;
+        height: 18px;
+      }
+
+      .toggle.active::after {
+        transform: translateX(20px);
+      }
+
+      /* Buttons bigger for touch */
+      .btn {
+        padding: 12px 20px;
+        font-size: 14px;
+        width: 100%;
+      }
+
+      .actions {
+        flex-direction: column;
+        gap: 8px;
+      }
+
+      .export-btn {
+        padding: 12px 16px;
+        font-size: 13px;
+        width: 100%;
+      }
+
+      .export-row {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 8px;
+      }
+
+      .export-field {
+        width: 100%;
+      }
+
+      .export-field select {
+        flex: 1;
+      }
+
+      /* Add/Upload buttons taller for touch */
+      .btn-add,
+      .audio-upload-btn,
+      .overlay-upload-btn,
+      .merge-upload-btn,
+      .telop-add-btn {
+        height: 40px;
+        font-size: 13px;
+      }
+
+      /* Delete button bigger for touch */
+      .btn-icon {
+        width: 32px;
+        height: 32px;
+        font-size: 15px;
+      }
+
+      /* Utility bar — scrollable */
+      .utility-bar {
+        padding: 10px;
+        gap: 4px;
+        overflow-x: auto;
+        flex-wrap: nowrap;
+        -webkit-overflow-scrolling: touch;
+      }
+
+      .util-btn {
+        padding: 8px 10px;
+        font-size: 11px;
+        white-space: nowrap;
+        flex-shrink: 0;
+      }
+
+      /* Shortcut panel */
+      .shortcut-panel {
+        padding: 10px 12px;
+        font-size: 11px;
+      }
+
+      /* Video preview */
+      .video-preview video {
+        max-height: 240px;
+      }
+
+      /* Filter sliders — slightly bigger */
+      .filter-item input[type="range"] {
+        height: 6px;
+      }
+
+      /* Ken Burns fields */
+      .kb-field input {
+        width: 52px;
+        padding: 8px 4px;
+        font-size: 13px;
+      }
+
+      /* Overlay items stack */
+      .overlay-item {
+        font-size: 11px;
+        gap: 6px;
+      }
+
+      /* Speed presets */
+      .speed-preset-btn {
+        padding: 7px 10px;
+        font-size: 12px;
+      }
+
+      /* Seg style row */
+      .seg-style-row {
+        margin-left: 0;
+        padding: 8px;
+      }
+
+      /* Tab nav — compact on phone */
+      .tab-nav {
+        padding: 3px;
+        border-radius: 8px;
+      }
+
+      .tab-btn {
+        padding: 8px 4px;
+        font-size: 10px;
+        flex-direction: column;
+        gap: 2px;
+      }
+
+      .tab-btn .tab-icon {
+        font-size: 16px;
+      }
+
+      /* Thumb preview full width */
+      .thumb-preview {
+        max-width: 100%;
+      }
     }
   </style>
 </head>
 
 <body>
   <div class="container">
-    <h1>🎬 自動字幕ツール</h1>
-    <p class="subtitle">動画をアップロードすると、AIが自動で字幕をつけます</p>
+    <h1>🎬 動画編集ツール</h1>
+    <p class="subtitle">動画をアップロードするとAIが自動で字幕をつけます、その他簡単な編集も可能です。</p>
 
     <!-- Upload Area -->
     <div class="upload-area" id="uploadArea" onclick="document.getElementById('fileInput').click()">
@@ -1471,440 +1796,485 @@
 
     <!-- Result -->
     <div class="result-section" id="resultSection">
-      <div class="result-card">
-        <div class="result-title">📝 字幕編集</div>
-        <div class="subtitle-list" id="subtitleList"></div>
-        <button class="btn-add" onclick="addSubtitle()">＋ 字幕を追加</button>
+
+      <!-- Tab Navigation -->
+      <div class="tab-nav" id="tabNav">
+        <button class="tab-btn active" onclick="switchTab('subtitle')" data-tab="subtitle">
+          <span class="tab-icon">📝</span> 字幕
+        </button>
+        <button class="tab-btn" onclick="switchTab('edit')" data-tab="edit">
+          <span class="tab-icon">🎬</span> 編集
+        </button>
+        <button class="tab-btn" onclick="switchTab('effects')" data-tab="effects">
+          <span class="tab-icon">✨</span> エフェクト
+        </button>
+        <button class="tab-btn" onclick="switchTab('export')" data-tab="export">
+          <span class="tab-icon">📤</span> 出力
+        </button>
       </div>
 
-      <!-- Style Settings -->
-      <div class="style-card">
-        <div class="style-title">🎨 スタイル設定</div>
-        <div class="style-grid">
-          <div class="style-field" style="grid-column: 1 / -1">
-            <label>フォント</label>
-            <select id="styleFont" onchange="updateStyle()">
-              <optgroup label="— ゴシック体 —">
-                <option value="Noto Sans JP">Noto Sans JP</option>
-                <option value="M PLUS 1p">M PLUS 1p</option>
-                <option value="Zen Kaku Gothic New">Zen角ゴシック</option>
-                <option value="Sawarabi Gothic">さわらびゴシック</option>
-                <option value="DotGothic16">ドットゴシック16</option>
-              </optgroup>
-              <optgroup label="— 丸ゴシック体 —">
-                <option value="M PLUS Rounded 1c">M PLUS Rounded 1c</option>
-                <option value="Kosugi Maru">小杉丸ゴシック</option>
-                <option value="Zen Maru Gothic">Zen丸ゴシック</option>
-                <option value="Kiwi Maru">キウイ丸</option>
-              </optgroup>
-              <optgroup label="— 明朝体 —">
-                <option value="Noto Serif JP">Noto Serif JP</option>
-                <option value="Shippori Mincho">しっぽり明朝</option>
-                <option value="Zen Old Mincho">Zenオールド明朝</option>
-                <option value="Sawarabi Mincho">さわらび明朝</option>
-              </optgroup>
-              <optgroup label="— デザイン・装飾 —">
-                <option value="Dela Gothic One">デラゴシック</option>
-                <option value="Reggae One">レゲエ</option>
-                <option value="RocknRoll One">ロックンロール</option>
-                <option value="Stick">スティック</option>
-                <option value="Potta One">ポッタ</option>
-                <option value="Rampart One">ランパート</option>
-                <option value="Train One">トレイン</option>
-              </optgroup>
-              <optgroup label="— 手書き・ポップ —">
-                <option value="Hachi Maru Pop">はちまるポップ</option>
-                <option value="Yusei Magic">ユウセイマジック</option>
-              </optgroup>
-              <optgroup label="— 欧文フォント —">
-                <option value="Arial">Arial</option>
-                <option value="Helvetica">Helvetica</option>
-                <option value="Roboto">Roboto</option>
-                <option value="Open Sans">Open Sans</option>
-                <option value="Montserrat">Montserrat</option>
-                <option value="Lato">Lato</option>
-                <option value="Inter">Inter</option>
-                <option value="Georgia">Georgia</option>
-                <option value="Times New Roman">Times New Roman</option>
-                <option value="Courier New">Courier New</option>
-                <option value="Verdana">Verdana</option>
-                <option value="Impact">Impact</option>
-                <option value="Comic Sans MS">Comic Sans MS</option>
-              </optgroup>
-            </select>
-          </div>
-          <div class="style-field">
-            <label>サイズ (px)</label>
-            <input type="number" id="styleFontSize" value="42" min="16" max="120" onchange="updateStyle()">
-          </div>
-          <div class="style-field">
-            <label>太字</label>
-            <div class="toggle-row">
-              <button class="toggle active" id="styleBold"
-                onclick="this.classList.toggle('active'); updateStyle()"></button>
-              <span style="font-size:13px; color:#888" id="boldLabel">ON</span>
-            </div>
-          </div>
-          <div class="style-field">
-            <label>文字の色</label>
-            <div class="color-row">
-              <input type="color" id="styleFontColor" value="#ffffff" onchange="updateStyle()">
-              <input type="text" class="color-hex" id="styleFontColorHex" value="#ffffff"
-                onchange="document.getElementById('styleFontColor').value=this.value; updateStyle()">
-            </div>
-          </div>
-          <div class="style-field">
-            <label>背景の色</label>
-            <div class="color-row">
-              <input type="color" id="styleBgColor" value="#000000" onchange="updateStyle()">
-              <input type="text" class="color-hex" id="styleBgColorHex" value="#000000"
-                onchange="document.getElementById('styleBgColor').value=this.value; updateStyle()">
-            </div>
-          </div>
-          <div class="style-field">
-            <label>背景の透明度 (%)</label>
-            <input type="number" id="styleBgOpacity" value="75" min="0" max="100" step="5" onchange="updateStyle()">
-          </div>
-          <div class="style-field">
-            <label>デフォルト位置</label>
-            <div class="pos-buttons">
-              <button class="pos-btn" onclick="setPosition('top')">上</button>
-              <button class="pos-btn" onclick="setPosition('center')">中央</button>
-              <button class="pos-btn active" onclick="setPosition('bottom')">下</button>
-              <button class="pos-btn" onclick="setPosition('custom')">XY指定</button>
-            </div>
-          </div>
-          <div class="style-field" id="customPosField" style="display:none">
-            <label>カスタム位置 (X%, Y%)</label>
-            <div class="color-row">
-              <span style="color:#888; font-size:12px">X</span>
-              <input type="number" id="stylePosX" value="50" min="0" max="100" style="width:60px"
-                onchange="updateStyle()">
-              <span style="color:#888; font-size:12px">Y</span>
-              <input type="number" id="stylePosY" value="90" min="0" max="100" style="width:60px"
-                onchange="updateStyle()">
-            </div>
-          </div>
-        </div>
-        <div class="style-preview" id="stylePreview">
-          <div class="style-preview-text" id="stylePreviewText">サンプル字幕テキスト</div>
-        </div>
-      </div>
-
-      <!-- Animation -->
-      <div class="style-card">
-        <div class="style-title">✨ アニメーション</div>
-        <div class="style-grid">
-          <div class="style-field" style="grid-column: 1 / -1">
-            <label>デフォルトアニメーション</label>
-            <select id="styleAnimation" onchange="updateStyle()">
-              <option value="fadeIn">フェードイン</option>
-              <option value="slideUp">スライドアップ ↑</option>
-              <option value="slideDown">スライドダウン ↓</option>
-              <option value="pop">ポップ</option>
-              <option value="bounce">バウンス</option>
-              <option value="typewriter">タイプライター</option>
-              <option value="none">なし</option>
-            </select>
-          </div>
-        </div>
-      </div>
-
-      <!-- Audio Tracks -->
-      <div class="audio-card">
-        <div class="audio-title">🔊 サウンド</div>
-        <div id="audioTrackList"></div>
-        <button class="audio-upload-btn" onclick="document.getElementById('audioFileInput').click()">＋
-          音声ファイルを追加</button>
-        <input type="file" id="audioFileInput" accept="audio/*" style="display:none" onchange="uploadAudioFile(this)">
-      </div>
-
-      <!-- Video Editing -->
-      <div class="edit-card">
-        <div class="edit-title">🎬 動画編集</div>
-
-        <!-- Trim -->
-        <div class="edit-section">
-          <div class="edit-section-title">✂️ トリミング</div>
-          <div class="edit-row">
-            <div class="edit-field">
-              <label>開始</label>
-              <input type="number" id="trimStart" value="0" min="0" step="0.1" onchange="updateEditSettings()">
-              <label>秒</label>
-            </div>
-            <span style="color:#555">→</span>
-            <div class="edit-field">
-              <label>終了</label>
-              <input type="number" id="trimEnd" value="" min="0" step="0.1" placeholder="最後"
-                onchange="updateEditSettings()">
-              <label>秒</label>
-            </div>
-          </div>
-          <div class="edit-hint">※ 終了が空欄の場合は動画の最後まで</div>
+      <!-- ── Tab: 字幕 ── -->
+      <div class="tab-panel active" id="tabSubtitle">
+        <div class="result-card">
+          <div class="result-title">📝 字幕編集</div>
+          <div class="subtitle-list" id="subtitleList"></div>
+          <button class="btn-add" onclick="addSubtitle()">＋ 字幕を追加</button>
         </div>
 
-        <!-- Transition -->
-        <div class="edit-section">
-          <div class="edit-section-title">✨ トランジション</div>
-          <div class="edit-row">
-            <div class="edit-field">
-              <label>フェードイン</label>
-              <input type="number" id="fadeIn" value="0" min="0" max="5" step="0.1" onchange="updateEditSettings()">
-              <label>秒</label>
-            </div>
-            <div class="edit-field">
-              <label>フェードアウト</label>
-              <input type="number" id="fadeOut" value="0" min="0" max="5" step="0.1" onchange="updateEditSettings()">
-              <label>秒</label>
-            </div>
-          </div>
-        </div>
-
-        <!-- Speed -->
-        <div class="edit-section">
-          <div class="edit-section-title">⏩ 再生速度</div>
-          <div class="edit-row">
-            <div class="edit-field">
-              <label>倍速</label>
-              <input type="number" id="playbackSpeed" value="1" min="0.1" max="4" step="0.1"
-                onchange="updateEditSettings(); updateSpeedPresets()">
-              <label>x</label>
-            </div>
-          </div>
-          <div class="speed-presets">
-            <button class="speed-preset-btn" onclick="setSpeed(0.25)">0.25x</button>
-            <button class="speed-preset-btn" onclick="setSpeed(0.5)">0.5x</button>
-            <button class="speed-preset-btn active" onclick="setSpeed(1)">1x</button>
-            <button class="speed-preset-btn" onclick="setSpeed(1.5)">1.5x</button>
-            <button class="speed-preset-btn" onclick="setSpeed(2)">2x</button>
-            <button class="speed-preset-btn" onclick="setSpeed(4)">4x</button>
-          </div>
-          <div class="edit-hint">※ 0.5x = スローモーション、 2x = 早送り</div>
-        </div>
-
-        <!-- Merge -->
-        <div class="edit-section">
-          <div class="edit-section-title">🔗 動画の結合</div>
-          <div id="mergeVideoList"></div>
-          <button class="merge-upload-btn" onclick="document.getElementById('mergeVideoInput').click()">＋
-            動画を追加して結合</button>
-          <input type="file" id="mergeVideoInput" accept="video/*" style="display:none"
-            onchange="uploadMergeVideo(this)">
-          <div class="edit-hint">※ メイン動画の後ろに結合されます</div>
-        </div>
-      </div>
-
-      <!-- Image Overlays -->
-      <div class="visual-card">
-        <div class="visual-title overlay">🖼️ 画像オーバーレイ</div>
-        <div id="overlayList"></div>
-        <button class="overlay-upload-btn" onclick="document.getElementById('overlayImageInput').click()">＋
-          画像を追加</button>
-        <input type="file" id="overlayImageInput" accept="image/*" style="display:none"
-          onchange="uploadOverlayImage(this)">
-        <div class="edit-hint">※ ロゴ、スタンプ、フレームなどを好きな位置・タイミングで表示</div>
-      </div>
-
-      <!-- Filters -->
-      <div class="visual-card">
-        <div class="visual-title filter">🎨 フィルター / 色調補正</div>
-        <div class="filter-grid">
-          <div class="filter-item">
-            <label>明るさ <span id="filterBrightnessVal">100%</span></label>
-            <input type="range" id="filterBrightness" min="0" max="200" value="100" oninput="updateFilters()">
-          </div>
-          <div class="filter-item">
-            <label>コントラスト <span id="filterContrastVal">100%</span></label>
-            <input type="range" id="filterContrast" min="0" max="200" value="100" oninput="updateFilters()">
-          </div>
-          <div class="filter-item">
-            <label>彩度 <span id="filterSaturateVal">100%</span></label>
-            <input type="range" id="filterSaturate" min="0" max="200" value="100" oninput="updateFilters()">
-          </div>
-          <div class="filter-item">
-            <label>セピア <span id="filterSepiaVal">0%</span></label>
-            <input type="range" id="filterSepia" min="0" max="100" value="0" oninput="updateFilters()">
-          </div>
-          <div class="filter-item">
-            <label>モノクロ <span id="filterGrayscaleVal">0%</span></label>
-            <input type="range" id="filterGrayscale" min="0" max="100" value="0" oninput="updateFilters()">
-          </div>
-          <div class="filter-item">
-            <label>色相回転 <span id="filterHueVal">0°</span></label>
-            <input type="range" id="filterHue" min="0" max="360" value="0" oninput="updateFilters()">
-          </div>
-          <div class="filter-item">
-            <label>ぼかし <span id="filterBlurVal">0px</span></label>
-            <input type="range" id="filterBlur" min="0" max="20" value="0" step="0.5" oninput="updateFilters()">
-          </div>
-          <div class="filter-item" style="display:flex; align-items:flex-end; justify-content:flex-end">
-            <button class="btn-reset" onclick="resetFilters()">↺ リセット</button>
-          </div>
-        </div>
-      </div>
-
-      <!-- Ken Burns -->
-      <div class="visual-card">
-        <div class="visual-title kenburns">📷 ズーム / パン（Ken Burns）</div>
-        <div style="margin-bottom:12px">
-          <div class="toggle-row">
-            <button class="toggle" id="kbToggle" onclick="this.classList.toggle('active'); updateKenBurns()"></button>
-            <span style="font-size:13px; color:#888" id="kbLabel">OFF</span>
-          </div>
-        </div>
-        <div id="kbControls" style="display:none">
-          <div class="edit-hint" style="margin-bottom:8px">※ 開始→終了にかけて値が変化します</div>
-          <div class="kb-grid">
-            <div>
-              <div style="font-size:12px; color:#888; margin-bottom:6px">開始</div>
-              <div class="kb-field">
-                <label>ズーム</label>
-                <input type="number" id="kbStartScale" value="1.0" min="0.5" max="3" step="0.05"
-                  onchange="updateKenBurns()">
-              </div>
-              <div class="kb-field" style="margin-top:6px">
-                <label>X</label>
-                <input type="number" id="kbStartX" value="0" min="-50" max="50" step="1" onchange="updateKenBurns()">
-                <label>Y</label>
-                <input type="number" id="kbStartY" value="0" min="-50" max="50" step="1" onchange="updateKenBurns()">
-              </div>
-            </div>
-            <div>
-              <div style="font-size:12px; color:#888; margin-bottom:6px">終了</div>
-              <div class="kb-field">
-                <label>ズーム</label>
-                <input type="number" id="kbEndScale" value="1.2" min="0.5" max="3" step="0.05"
-                  onchange="updateKenBurns()">
-              </div>
-              <div class="kb-field" style="margin-top:6px">
-                <label>X</label>
-                <input type="number" id="kbEndX" value="0" min="-50" max="50" step="1" onchange="updateKenBurns()">
-                <label>Y</label>
-                <input type="number" id="kbEndY" value="0" min="-50" max="50" step="1" onchange="updateKenBurns()">
-              </div>
-            </div>
-          </div>
-          <div class="speed-presets" style="margin-top:10px">
-            <button class="speed-preset-btn" onclick="setKBPreset(1.0,1.2,0,0,0,0)">ズームイン</button>
-            <button class="speed-preset-btn" onclick="setKBPreset(1.2,1.0,0,0,0,0)">ズームアウト</button>
-            <button class="speed-preset-btn" onclick="setKBPreset(1.1,1.1,-10,10,0,0)">左→右パン</button>
-            <button class="speed-preset-btn" onclick="setKBPreset(1.15,1.15,0,0,5,-5)">下→上パン</button>
-          </div>
-        </div>
-      </div>
-
-      <!-- Free Telop -->
-      <div class="telop-card">
-        <div class="telop-title">📝 フリーテロップ</div>
-        <div id="telopList"></div>
-        <button class="telop-add-btn" onclick="addTelop()">＋ テロップを追加</button>
-        <div class="edit-hint">※ 字幕とは別に自由なテキストを好きな位置・タイミングで表示</div>
-      </div>
-
-      <!-- Export Section -->
-      <div class="export-card">
-        <div class="export-title">📤 エクスポート</div>
-
-        <!-- MP4 Render -->
-        <div class="export-section">
-          <div class="export-section-title">🎬 MP4レンダリング</div>
-          <div class="export-row">
-            <button class="export-btn render" id="renderBtn" onclick="startRender()">📦 動画を書き出し</button>
-          </div>
-          <div class="edit-hint">※ 現在の設定を全て反映してMP4を生成します（数分かかる場合があります）</div>
-          <div class="render-status" id="renderStatus"></div>
-          <div id="renderResult"></div>
-        </div>
-
-        <!-- SRT/VTT -->
-        <div class="export-section">
-          <div class="export-section-title">📝 字幕ファイルエクスポート</div>
-          <div class="export-row">
-            <div class="export-field">
-              <label>形式</label>
-              <select id="exportSubFormat">
-                <option value="srt">SRT（YouTube対応）</option>
-                <option value="vtt">WebVTT</option>
+        <!-- Style Settings -->
+        <div class="style-card">
+          <div class="style-title">🎨 スタイル設定</div>
+          <div class="style-grid">
+            <div class="style-field" style="grid-column: 1 / -1">
+              <label>フォント</label>
+              <select id="styleFont" onchange="updateStyle()">
+                <optgroup label="— ゴシック体 —">
+                  <option value="Noto Sans JP">Noto Sans JP</option>
+                  <option value="M PLUS 1p">M PLUS 1p</option>
+                  <option value="Zen Kaku Gothic New">Zen角ゴシック</option>
+                  <option value="Sawarabi Gothic">さわらびゴシック</option>
+                  <option value="DotGothic16">ドットゴシック16</option>
+                </optgroup>
+                <optgroup label="— 丸ゴシック体 —">
+                  <option value="M PLUS Rounded 1c">M PLUS Rounded 1c</option>
+                  <option value="Kosugi Maru">小杉丸ゴシック</option>
+                  <option value="Zen Maru Gothic">Zen丸ゴシック</option>
+                  <option value="Kiwi Maru">キウイ丸</option>
+                </optgroup>
+                <optgroup label="— 明朝体 —">
+                  <option value="Noto Serif JP">Noto Serif JP</option>
+                  <option value="Shippori Mincho">しっぽり明朝</option>
+                  <option value="Zen Old Mincho">Zenオールド明朝</option>
+                  <option value="Sawarabi Mincho">さわらび明朝</option>
+                </optgroup>
+                <optgroup label="— デザイン・装飾 —">
+                  <option value="Dela Gothic One">デラゴシック</option>
+                  <option value="Reggae One">レゲエ</option>
+                  <option value="RocknRoll One">ロックンロール</option>
+                  <option value="Stick">スティック</option>
+                  <option value="Potta One">ポッタ</option>
+                  <option value="Rampart One">ランパート</option>
+                  <option value="Train One">トレイン</option>
+                </optgroup>
+                <optgroup label="— 手書き・ポップ —">
+                  <option value="Hachi Maru Pop">はちまるポップ</option>
+                  <option value="Yusei Magic">ユウセイマジック</option>
+                </optgroup>
+                <optgroup label="— 欧文フォント —">
+                  <option value="Arial">Arial</option>
+                  <option value="Helvetica">Helvetica</option>
+                  <option value="Roboto">Roboto</option>
+                  <option value="Open Sans">Open Sans</option>
+                  <option value="Montserrat">Montserrat</option>
+                  <option value="Lato">Lato</option>
+                  <option value="Inter">Inter</option>
+                  <option value="Georgia">Georgia</option>
+                  <option value="Times New Roman">Times New Roman</option>
+                  <option value="Courier New">Courier New</option>
+                  <option value="Verdana">Verdana</option>
+                  <option value="Impact">Impact</option>
+                  <option value="Comic Sans MS">Comic Sans MS</option>
+                </optgroup>
               </select>
             </div>
-            <button class="export-btn sub" onclick="exportSubtitles()">⬇ ダウンロード</button>
-          </div>
-          <div class="edit-hint">※ YouTubeや動画プレイヤー用の字幕ファイル</div>
-        </div>
-
-        <!-- Thumbnail -->
-        <div class="export-section">
-          <div class="export-section-title">🖼️ サムネイル生成</div>
-          <div class="export-row">
-            <div class="export-field">
-              <label>時刻</label>
-              <input type="number" id="thumbTime" value="0" min="0" step="0.1">
-              <label>秒</label>
+            <div class="style-field">
+              <label>サイズ (px)</label>
+              <input type="number" id="styleFontSize" value="42" min="16" max="120" onchange="updateStyle()">
             </div>
-            <button class="export-btn thumb" onclick="generateThumbnail()">📸 生成</button>
+            <div class="style-field">
+              <label>太字</label>
+              <div class="toggle-row">
+                <button class="toggle active" id="styleBold"
+                  onclick="this.classList.toggle('active'); updateStyle()"></button>
+                <span style="font-size:13px; color:#888" id="boldLabel">ON</span>
+              </div>
+            </div>
+            <div class="style-field">
+              <label>文字の色</label>
+              <div class="color-row">
+                <input type="color" id="styleFontColor" value="#ffffff" onchange="updateStyle()">
+                <input type="text" class="color-hex" id="styleFontColorHex" value="#ffffff"
+                  onchange="document.getElementById('styleFontColor').value=this.value; updateStyle()">
+              </div>
+            </div>
+            <div class="style-field">
+              <label>背景の色</label>
+              <div class="color-row">
+                <input type="color" id="styleBgColor" value="#000000" onchange="updateStyle()">
+                <input type="text" class="color-hex" id="styleBgColorHex" value="#000000"
+                  onchange="document.getElementById('styleBgColor').value=this.value; updateStyle()">
+              </div>
+            </div>
+            <div class="style-field">
+              <label>背景の透明度 (%)</label>
+              <input type="number" id="styleBgOpacity" value="75" min="0" max="100" step="5" onchange="updateStyle()">
+            </div>
+            <div class="style-field">
+              <label>デフォルト位置</label>
+              <div class="pos-buttons">
+                <button class="pos-btn" onclick="setPosition('top')">上</button>
+                <button class="pos-btn" onclick="setPosition('center')">中央</button>
+                <button class="pos-btn active" onclick="setPosition('bottom')">下</button>
+                <button class="pos-btn" onclick="setPosition('custom')">XY指定</button>
+              </div>
+            </div>
+            <div class="style-field" id="customPosField" style="display:none">
+              <label>カスタム位置 (X%, Y%)</label>
+              <div class="color-row">
+                <span style="color:#888; font-size:12px">X</span>
+                <input type="number" id="stylePosX" value="50" min="0" max="100" style="width:60px"
+                  onchange="updateStyle()">
+                <span style="color:#888; font-size:12px">Y</span>
+                <input type="number" id="stylePosY" value="90" min="0" max="100" style="width:60px"
+                  onchange="updateStyle()">
+              </div>
+            </div>
           </div>
-          <div class="edit-hint">※ 指定した時刻のフレームをJPEGで保存</div>
-          <div id="thumbResult"></div>
+          <div class="style-preview" id="stylePreview">
+            <div class="style-preview-text" id="stylePreviewText">サンプル字幕テキスト</div>
+          </div>
+        </div>
+
+        <!-- Animation -->
+        <div class="style-card">
+          <div class="style-title">✨ アニメーション</div>
+          <div class="style-grid">
+            <div class="style-field" style="grid-column: 1 / -1">
+              <label>デフォルトアニメーション</label>
+              <select id="styleAnimation" onchange="updateStyle()">
+                <option value="fadeIn">フェードイン</option>
+                <option value="slideUp">スライドアップ ↑</option>
+                <option value="slideDown">スライドダウン ↓</option>
+                <option value="pop">ポップ</option>
+                <option value="bounce">バウンス</option>
+                <option value="typewriter">タイプライター</option>
+                <option value="none">なし</option>
+              </select>
+            </div>
+          </div>
         </div>
       </div>
 
-      <div class="actions">
-        <button class="btn btn-save" onclick="saveAll()">💾 保存</button>
-        <button class="btn btn-primary" onclick="saveAndOpenStudio()">Remotion Studioで確認 →</button>
-        <button class="btn btn-secondary" onclick="location.reload()">別の動画を処理</button>
+      <!-- ── Tab: 編集 ── -->
+      <div class="tab-panel" id="tabEdit">
+        <!-- Audio Tracks -->
+        <div class="audio-card">
+          <div class="audio-title">🔊 サウンド</div>
+          <div id="audioTrackList"></div>
+          <button class="audio-upload-btn" onclick="document.getElementById('audioFileInput').click()">＋
+            音声ファイルを追加</button>
+          <input type="file" id="audioFileInput" accept="audio/*" style="display:none" onchange="uploadAudioFile(this)">
+        </div>
+
+        <!-- Video Editing -->
+        <div class="edit-card">
+          <div class="edit-title">🎬 動画編集</div>
+
+          <!-- Trim -->
+          <div class="edit-section">
+            <div class="edit-section-title">✂️ トリミング</div>
+            <div class="edit-row">
+              <div class="edit-field">
+                <label>開始</label>
+                <input type="number" id="trimStart" value="0" min="0" step="0.1" onchange="updateEditSettings()">
+                <label>秒</label>
+              </div>
+              <span style="color:#555">→</span>
+              <div class="edit-field">
+                <label>終了</label>
+                <input type="number" id="trimEnd" value="" min="0" step="0.1" placeholder="最後"
+                  onchange="updateEditSettings()">
+                <label>秒</label>
+              </div>
+            </div>
+            <div class="edit-hint">※ 終了が空欄の場合は動画の最後まで</div>
+          </div>
+
+          <!-- Transition -->
+          <div class="edit-section">
+            <div class="edit-section-title">✨ トランジション</div>
+            <div class="edit-row">
+              <div class="edit-field">
+                <label>フェードイン</label>
+                <input type="number" id="fadeIn" value="0" min="0" max="5" step="0.1" onchange="updateEditSettings()">
+                <label>秒</label>
+              </div>
+              <div class="edit-field">
+                <label>フェードアウト</label>
+                <input type="number" id="fadeOut" value="0" min="0" max="5" step="0.1" onchange="updateEditSettings()">
+                <label>秒</label>
+              </div>
+            </div>
+          </div>
+
+          <!-- Speed -->
+          <div class="edit-section">
+            <div class="edit-section-title">⏩ 再生速度</div>
+            <div class="edit-row">
+              <div class="edit-field">
+                <label>倍速</label>
+                <input type="number" id="playbackSpeed" value="1" min="0.1" max="4" step="0.1"
+                  onchange="updateEditSettings(); updateSpeedPresets()">
+                <label>x</label>
+              </div>
+            </div>
+            <div class="speed-presets">
+              <button class="speed-preset-btn" onclick="setSpeed(0.25)">0.25x</button>
+              <button class="speed-preset-btn" onclick="setSpeed(0.5)">0.5x</button>
+              <button class="speed-preset-btn active" onclick="setSpeed(1)">1x</button>
+              <button class="speed-preset-btn" onclick="setSpeed(1.5)">1.5x</button>
+              <button class="speed-preset-btn" onclick="setSpeed(2)">2x</button>
+              <button class="speed-preset-btn" onclick="setSpeed(4)">4x</button>
+            </div>
+            <div class="edit-hint">※ 0.5x = スローモーション、 2x = 早送り</div>
+          </div>
+
+          <!-- Merge -->
+          <div class="edit-section">
+            <div class="edit-section-title">🔗 動画の結合</div>
+            <div id="mergeVideoList"></div>
+            <button class="merge-upload-btn" onclick="document.getElementById('mergeVideoInput').click()">＋
+              動画を追加して結合</button>
+            <input type="file" id="mergeVideoInput" accept="video/*" style="display:none"
+              onchange="uploadMergeVideo(this)">
+            <div class="edit-hint">※ メイン動画の後ろに結合されます</div>
+          </div>
+        </div>
       </div>
 
-      <!-- Utility Bar -->
-      <div class="utility-bar" id="utilityBar">
-        <span class="utility-title">🛠</span>
-        <button class="util-btn undo" id="undoBtn" onclick="undo()" disabled title="Ctrl+Z">↩ 戻す</button>
-        <button class="util-btn redo" id="redoBtn" onclick="redo()" disabled title="Ctrl+Shift+Z">↪ やり直し</button>
-        <span class="undo-count" id="undoCount"></span>
-        <div class="util-sep"></div>
-        <button class="util-btn project-save" onclick="downloadProject()" title="プロジェクト保存">📁 プロジェクト保存</button>
-        <button class="util-btn project-load" onclick="document.getElementById('projectFileInput').click()"
-          title="プロジェクト読込">📂 読込</button>
-        <input type="file" id="projectFileInput" accept=".json" style="display:none" onchange="loadProject(this)">
-        <div class="util-sep"></div>
-        <button class="util-btn shortcut-help"
-          onclick="document.getElementById('shortcutPanel').classList.toggle('open')" title="ショートカット一覧">⌨
-          ショートカット</button>
+      <!-- ── Tab: エフェクト ── -->
+      <div class="tab-panel" id="tabEffects">
+        <!-- Image Overlays -->
+        <div class="visual-card">
+          <div class="visual-title overlay">🖼️ 画像オーバーレイ</div>
+          <div id="overlayList"></div>
+          <button class="overlay-upload-btn" onclick="document.getElementById('overlayImageInput').click()">＋
+            画像を追加</button>
+          <input type="file" id="overlayImageInput" accept="image/*" style="display:none"
+            onchange="uploadOverlayImage(this)">
+          <div class="edit-hint">※ ロゴ、スタンプ、フレームなどを好きな位置・タイミングで表示</div>
+        </div>
+
+        <!-- Filters -->
+        <div class="visual-card">
+          <div class="visual-title filter">🎨 フィルター / 色調補正</div>
+          <div class="filter-grid">
+            <div class="filter-item">
+              <label>明るさ <span id="filterBrightnessVal">100%</span></label>
+              <input type="range" id="filterBrightness" min="0" max="200" value="100" oninput="updateFilters()">
+            </div>
+            <div class="filter-item">
+              <label>コントラスト <span id="filterContrastVal">100%</span></label>
+              <input type="range" id="filterContrast" min="0" max="200" value="100" oninput="updateFilters()">
+            </div>
+            <div class="filter-item">
+              <label>彩度 <span id="filterSaturateVal">100%</span></label>
+              <input type="range" id="filterSaturate" min="0" max="200" value="100" oninput="updateFilters()">
+            </div>
+            <div class="filter-item">
+              <label>セピア <span id="filterSepiaVal">0%</span></label>
+              <input type="range" id="filterSepia" min="0" max="100" value="0" oninput="updateFilters()">
+            </div>
+            <div class="filter-item">
+              <label>モノクロ <span id="filterGrayscaleVal">0%</span></label>
+              <input type="range" id="filterGrayscale" min="0" max="100" value="0" oninput="updateFilters()">
+            </div>
+            <div class="filter-item">
+              <label>色相回転 <span id="filterHueVal">0°</span></label>
+              <input type="range" id="filterHue" min="0" max="360" value="0" oninput="updateFilters()">
+            </div>
+            <div class="filter-item">
+              <label>ぼかし <span id="filterBlurVal">0px</span></label>
+              <input type="range" id="filterBlur" min="0" max="20" value="0" step="0.5" oninput="updateFilters()">
+            </div>
+            <div class="filter-item" style="display:flex; align-items:flex-end; justify-content:flex-end">
+              <button class="btn-reset" onclick="resetFilters()">↺ リセット</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Ken Burns -->
+        <div class="visual-card">
+          <div class="visual-title kenburns">📷 ズーム / パン（Ken Burns）</div>
+          <div style="margin-bottom:12px">
+            <div class="toggle-row">
+              <button class="toggle" id="kbToggle" onclick="this.classList.toggle('active'); updateKenBurns()"></button>
+              <span style="font-size:13px; color:#888" id="kbLabel">OFF</span>
+            </div>
+          </div>
+          <div id="kbControls" style="display:none">
+            <div class="edit-hint" style="margin-bottom:8px">※ 開始→終了にかけて値が変化します</div>
+            <div class="kb-grid">
+              <div>
+                <div style="font-size:12px; color:#888; margin-bottom:6px">開始</div>
+                <div class="kb-field">
+                  <label>ズーム</label>
+                  <input type="number" id="kbStartScale" value="1.0" min="0.5" max="3" step="0.05"
+                    onchange="updateKenBurns()">
+                </div>
+                <div class="kb-field" style="margin-top:6px">
+                  <label>X</label>
+                  <input type="number" id="kbStartX" value="0" min="-50" max="50" step="1" onchange="updateKenBurns()">
+                  <label>Y</label>
+                  <input type="number" id="kbStartY" value="0" min="-50" max="50" step="1" onchange="updateKenBurns()">
+                </div>
+              </div>
+              <div>
+                <div style="font-size:12px; color:#888; margin-bottom:6px">終了</div>
+                <div class="kb-field">
+                  <label>ズーム</label>
+                  <input type="number" id="kbEndScale" value="1.2" min="0.5" max="3" step="0.05"
+                    onchange="updateKenBurns()">
+                </div>
+                <div class="kb-field" style="margin-top:6px">
+                  <label>X</label>
+                  <input type="number" id="kbEndX" value="0" min="-50" max="50" step="1" onchange="updateKenBurns()">
+                  <label>Y</label>
+                  <input type="number" id="kbEndY" value="0" min="-50" max="50" step="1" onchange="updateKenBurns()">
+                </div>
+              </div>
+            </div>
+            <div class="speed-presets" style="margin-top:10px">
+              <button class="speed-preset-btn" onclick="setKBPreset(1.0,1.2,0,0,0,0)">ズームイン</button>
+              <button class="speed-preset-btn" onclick="setKBPreset(1.2,1.0,0,0,0,0)">ズームアウト</button>
+              <button class="speed-preset-btn" onclick="setKBPreset(1.1,1.1,-10,10,0,0)">左→右パン</button>
+              <button class="speed-preset-btn" onclick="setKBPreset(1.15,1.15,0,0,5,-5)">下→上パン</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Free Telop -->
+        <div class="telop-card">
+          <div class="telop-title">📝 フリーテロップ</div>
+          <div id="telopList"></div>
+          <button class="telop-add-btn" onclick="addTelop()">＋ テロップを追加</button>
+          <div class="edit-hint">※ 字幕とは別に自由なテキストを好きな位置・タイミングで表示</div>
+        </div>
       </div>
-      <div class="shortcut-panel" id="shortcutPanel">
-        <table>
-          <tr>
-            <td>Ctrl + S</td>
-            <td>保存（全設定をサーバーに保存）</td>
-          </tr>
-          <tr>
-            <td>Ctrl + Z</td>
-            <td>元に戻す</td>
-          </tr>
-          <tr>
-            <td>Ctrl + Shift + Z</td>
-            <td>やり直し</td>
-          </tr>
-          <tr>
-            <td>Ctrl + E</td>
-            <td>プロジェクトをJSONで保存</td>
-          </tr>
-          <tr>
-            <td>Ctrl + O</td>
-            <td>プロジェクトを読み込み</td>
-          </tr>
-          <tr>
-            <td>Ctrl + Enter</td>
-            <td>Remotion Studioを開く</td>
-          </tr>
-        </table>
-      </div>
-    </div>
+
+      <!-- ── Tab: 出力 ── -->
+      <div class="tab-panel" id="tabExport">
+        <!-- Export Section -->
+        <div class="export-card">
+          <div class="export-title">📤 エクスポート</div>
+
+          <!-- MP4 Render -->
+          <div class="export-section">
+            <div class="export-section-title">🎬 MP4レンダリング</div>
+            <div class="export-row">
+              <button class="export-btn render" id="renderBtn" onclick="startRender()">📦 動画を書き出し</button>
+            </div>
+            <div class="edit-hint">※ 現在の設定を全て反映してMP4を生成します（数分かかる場合があります）</div>
+            <div class="render-status" id="renderStatus"></div>
+            <div id="renderResult"></div>
+          </div>
+
+          <!-- SRT/VTT -->
+          <div class="export-section">
+            <div class="export-section-title">📝 字幕ファイルエクスポート</div>
+            <div class="export-row">
+              <div class="export-field">
+                <label>形式</label>
+                <select id="exportSubFormat">
+                  <option value="srt">SRT（YouTube対応）</option>
+                  <option value="vtt">WebVTT</option>
+                </select>
+              </div>
+              <button class="export-btn sub" onclick="exportSubtitles()">⬇ ダウンロード</button>
+            </div>
+            <div class="edit-hint">※ YouTubeや動画プレイヤー用の字幕ファイル</div>
+          </div>
+
+          <!-- Thumbnail -->
+          <div class="export-section">
+            <div class="export-section-title">🖼️ サムネイル生成</div>
+            <div class="export-row">
+              <div class="export-field">
+                <label>時刻</label>
+                <input type="number" id="thumbTime" value="0" min="0" step="0.1">
+                <label>秒</label>
+              </div>
+              <button class="export-btn thumb" onclick="generateThumbnail()">📸 生成</button>
+            </div>
+            <div class="edit-hint">※ 指定した時刻のフレームをJPEGで保存</div>
+            <div id="thumbResult"></div>
+          </div>
+        </div>
+
+        <div class="actions">
+          <button class="btn btn-save" onclick="saveAll()">💾 保存</button>
+          <button class="btn btn-primary" onclick="saveAndOpenStudio()">Remotion Studioで確認 →</button>
+          <button class="btn btn-secondary" onclick="location.reload()">別の動画を処理</button>
+        </div>
+
+        <!-- Utility Bar -->
+        <div class="utility-bar" id="utilityBar">
+          <span class="utility-title">🛠</span>
+          <button class="util-btn undo" id="undoBtn" onclick="undo()" disabled title="Ctrl+Z">↩ 戻す</button>
+          <button class="util-btn redo" id="redoBtn" onclick="redo()" disabled title="Ctrl+Shift+Z">↪ やり直し</button>
+          <span class="undo-count" id="undoCount"></span>
+          <div class="util-sep"></div>
+          <button class="util-btn project-save" onclick="downloadProject()" title="プロジェクト保存">📁 プロジェクト保存</button>
+          <button class="util-btn project-load" onclick="document.getElementById('projectFileInput').click()"
+            title="プロジェクト読込">📂 読込</button>
+          <input type="file" id="projectFileInput" accept=".json" style="display:none" onchange="loadProject(this)">
+          <div class="util-sep"></div>
+          <button class="util-btn shortcut-help"
+            onclick="document.getElementById('shortcutPanel').classList.toggle('open')" title="ショートカット一覧">⌨
+            ショートカット</button>
+        </div>
+        <div class="shortcut-panel" id="shortcutPanel">
+          <table>
+            <tr>
+              <td>Ctrl + S</td>
+              <td>保存（全設定をサーバーに保存）</td>
+            </tr>
+            <tr>
+              <td>Ctrl + Z</td>
+              <td>元に戻す</td>
+            </tr>
+            <tr>
+              <td>Ctrl + Shift + Z</td>
+              <td>やり直し</td>
+            </tr>
+            <tr>
+              <td>Ctrl + E</td>
+              <td>プロジェクトをJSONで保存</td>
+            </tr>
+            <tr>
+              <td>Ctrl + O</td>
+              <td>プロジェクトを読み込み</td>
+            </tr>
+            <tr>
+              <td>Ctrl + Enter</td>
+              <td>Remotion Studioを開く</td>
+            </tr>
+          </table>
+        </div>
+      </div><!-- /tabExport -->
+    </div><!-- /resultSection -->
     <div class="save-toast" id="saveToast">✅ 保存しました</div>
 
     <div class="error-msg" id="errorMsg"></div>
   </div>
 
   <script>
+    // Tab Navigation
+    function switchTab(tabName) {
+      const panelMap = {
+        subtitle: 'tabSubtitle',
+        edit: 'tabEdit',
+        effects: 'tabEffects',
+        export: 'tabExport'
+      };
+      // Deactivate all
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+      // Activate clicked
+      document.querySelector(`.tab-btn[data-tab="${tabName}"]`).classList.add('active');
+      document.getElementById(panelMap[tabName]).classList.add('active');
+    }
+
     const SERVER = "http://localhost:3001";
     let currentFilename = "";
     let currentSubtitles = [];

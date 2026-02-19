@@ -44,6 +44,12 @@ app.post("/api/upload", upload.single("video"), (req, res) => {
         res.status(400).json({ error: "ファイルがありません" });
         return;
     }
+
+    // current_config.json を更新して Remotion Studio が最新の動画を使うようにする
+    const configPath = path.join(__dirname, "public", "current_config.json");
+    fs.writeFileSync(configPath, JSON.stringify({ videoFileName: req.file.originalname }, null, 2));
+    console.log(`📁 現在の動画を設定: ${req.file.originalname}`);
+
     res.json({
         filename: req.file.originalname,
         path: `/public/${req.file.originalname}`,
@@ -281,10 +287,15 @@ app.post("/api/render", async (req, res) => {
 
     console.log(`🎬 レンダリング開始: ${baseName}`);
 
+    // current_config.json を更新して正しい動画ファイルを指定
+    const configPath = path.join(__dirname, "public", "current_config.json");
+    fs.writeFileSync(configPath, JSON.stringify({ videoFileName: filename }, null, 2));
+
     try {
         const { execSync } = await import("child_process");
+        const propsJson = JSON.stringify({ videoFileName: filename });
         execSync(
-            `npx remotion render MyComp "${outputPath}" --codec=h264`,
+            `npx remotion render MyComp "${outputPath}" --codec=h264 --props='${propsJson}'`,
             { cwd: __dirname, stdio: "inherit", timeout: 600000 }
         );
         console.log(`✅ レンダリング完了: ${relOutput}`);

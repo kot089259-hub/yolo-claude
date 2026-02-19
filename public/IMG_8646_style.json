@@ -1,0 +1,12 @@
+{
+  "fontFamily": "Zen Kaku Gothic New",
+  "fontSize": 42,
+  "fontColor": "#ffffff",
+  "bgColor": "#000000",
+  "bgOpacity": 1,
+  "position": "bottom",
+  "posX": 50,
+  "posY": 90,
+  "bold": true,
+  "animation": "none"
+}

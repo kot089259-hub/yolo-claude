@@ -1,0 +1,12 @@
+{
+  "fontFamily": "Noto Sans JP",
+  "fontSize": 42,
+  "fontColor": "#ffffff",
+  "bgColor": "#000000",
+  "bgOpacity": 0.75,
+  "position": "bottom",
+  "posX": 50,
+  "posY": 90,
+  "bold": true,
+  "animation": "fadeIn"
+}

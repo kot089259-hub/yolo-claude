@@ -1,0 +1,38 @@
+{
+  "trim": {
+    "startTime": 0,
+    "endTime": null
+  },
+  "transition": {
+    "fadeIn": 0,
+    "fadeOut": 0
+  },
+  "speedSections": [
+    {
+      "start": 0,
+      "end": 9999,
+      "speed": 1
+    }
+  ],
+  "additionalVideos": [],
+  "imageOverlays": [],
+  "filters": {
+    "brightness": 114,
+    "contrast": 100,
+    "saturate": 100,
+    "sepia": 0,
+    "grayscale": 0,
+    "hueRotate": 0,
+    "blur": 0
+  },
+  "kenBurns": {
+    "enabled": false,
+    "startScale": 1,
+    "endScale": 1.2,
+    "startX": 0,
+    "endX": 0,
+    "startY": 0,
+    "endY": 0
+  },
+  "textOverlays": []
+}

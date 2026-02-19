@@ -8,7 +8,7 @@ import type { AudioTrack, EditSettings } from "./Composition";
 const FPS = 30;
 
 const defaultProps: CompositionProps = {
-  videoFileName: "IMG_8322.MOV",
+  videoFileName: "",
   subtitles: [],
 };
 
@@ -24,7 +24,22 @@ export const RemotionRoot: React.FC = () => {
         height={1080}
         defaultProps={defaultProps}
         calculateMetadata={async ({ props }) => {
-          const src = staticFile(props.videoFileName);
+          // props.videoFileName が空またはない場合、current_config.json から読み込む
+          let videoFileName = props.videoFileName;
+          if (!videoFileName) {
+            try {
+              const configRes = await fetch(staticFile("current_config.json"));
+              if (configRes.ok) {
+                const config = await configRes.json();
+                videoFileName = config.videoFileName;
+              }
+            } catch { }
+          }
+          if (!videoFileName) {
+            throw new Error("動画ファイルが設定されていません。upload.html から動画をアップロードしてください。");
+          }
+
+          const src = staticFile(videoFileName);
           const metadata = await getVideoMetadata(src);
 
           let subtitles: SubtitleSegment[] = props.subtitles;
@@ -32,7 +47,7 @@ export const RemotionRoot: React.FC = () => {
           let audioTracks: AudioTrack[] | undefined = props.audioTracks;
           let editSettings: EditSettings | undefined = props.editSettings;
 
-          const baseName = props.videoFileName.replace(/\.[^.]+$/, "");
+          const baseName = videoFileName.replace(/\.[^.]+$/, "");
 
           // 字幕データ
           if (!subtitles || subtitles.length === 0) {
@@ -84,7 +99,7 @@ export const RemotionRoot: React.FC = () => {
             width: Math.round(metadata.width),
             height: Math.round(metadata.height),
             fps: FPS,
-            props: { ...props, subtitles, subtitleStyle, audioTracks, editSettings },
+            props: { ...props, videoFileName, subtitles, subtitleStyle, audioTracks, editSettings },
           };
         }}
       />

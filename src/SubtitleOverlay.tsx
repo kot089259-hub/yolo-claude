@@ -190,9 +190,8 @@ const SingleSubtitle: React.FC<{
                 ...positionStyle,
                 display: "flex",
                 justifyContent: "center",
-                padding: "0 40px",
                 opacity,
-                maxWidth: "80%",
+                width: "100%",
             }}
         >
             <div
