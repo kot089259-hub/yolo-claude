@@ -57,31 +57,22 @@ app.post("/api/upload", upload.single("video"), (req, res) => {
     });
 });
 
-// Whisper API呼び出しヘルパー（SDKを使わず直接fetchで呼ぶ）
-async function whisperTranscribe(filePath: string, apiKey: string): Promise<{ text: string; segments: any[] }> {
-    const fileBuffer = fs.readFileSync(filePath);
-    const blob = new Blob([fileBuffer], { type: "audio/wav" });
+// Whisper API呼び出しヘルパー（curlで直接呼ぶ — 最も確実な方法）
+function whisperTranscribe(filePath: string, apiKey: string): { text: string; segments: any[] } {
+    const result = execSync(
+        `curl -s -X POST https://api.openai.com/v1/audio/transcriptions \
+         -H "Authorization: Bearer ${apiKey}" \
+         -F "file=@${filePath}" \
+         -F "model=whisper-1" \
+         -F "language=ja" \
+         -F "response_format=verbose_json"`,
+        { encoding: "utf-8", maxBuffer: 50 * 1024 * 1024, timeout: 600000 }
+    );
 
-    const formData = new FormData();
-    formData.append("file", blob, path.basename(filePath));
-    formData.append("model", "whisper-1");
-    formData.append("language", "ja");
-    formData.append("response_format", "verbose_json");
-
-    const response = await fetch("https://api.openai.com/v1/audio/transcriptions", {
-        method: "POST",
-        headers: {
-            Authorization: `Bearer ${apiKey}`,
-        },
-        body: formData,
-    });
-
-    if (!response.ok) {
-        const errorBody = await response.text();
-        throw new Error(`OpenAI API エラー (${response.status}): ${errorBody}`);
+    const data = JSON.parse(result);
+    if (data.error) {
+        throw new Error(`OpenAI API エラー: ${JSON.stringify(data.error)}`);
     }
-
-    const data = await response.json() as any;
     return {
         text: data.text || "",
         segments: data.segments || [],

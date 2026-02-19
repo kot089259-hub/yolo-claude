@@ -3,6 +3,7 @@ FROM node:20-slim
 # Install FFmpeg only (Whisper handled via OpenAI API)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ffmpeg \
+    curl \
     fonts-noto-cjk \
     && rm -rf /var/lib/apt/lists/*
 
