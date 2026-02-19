@@ -11,3 +11,4 @@ public/*.MOV
 public/*.mov
 public/*.mp4
 output/
+build/
