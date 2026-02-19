@@ -104,7 +104,6 @@ app.post("/api/transcribe", async (req, res) => {
                 file: audioFile,
                 language: "ja",
                 response_format: "verbose_json",
-                timestamp_granularities: ["segment"],
             });
 
             text = response.text || "";
@@ -156,7 +155,6 @@ app.post("/api/transcribe", async (req, res) => {
                     file: chunkFile,
                     language: "ja",
                     response_format: "verbose_json",
-                    timestamp_granularities: ["segment"],
                 });
 
                 allTexts.push(response.text || "");
