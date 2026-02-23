@@ -140,7 +140,7 @@ function toASSTime(seconds: number): string {
 }
 
 // ── 動画情報の取得 ──
-function getVideoInfo(videoPath: string): { width: number; height: number; duration: number; fps: number } {
+export function getVideoInfo(videoPath: string): { width: number; height: number; duration: number; fps: number } {
     const info = execSync(
         `ffprobe -v error -select_streams v:0 -show_entries stream=width,height,r_frame_rate,duration -show_entries format=duration -of json "${videoPath}"`,
         { encoding: "utf-8" }
@@ -162,7 +162,7 @@ function getVideoInfo(videoPath: string): { width: number; height: number; durat
 }
 
 // ── ASS字幕ファイル生成 ──
-function generateASSFile(
+export function generateASSFile(
     subtitles: SubtitleSegment[],
     style: SubtitleStyle,
     textOverlays: TextOverlayItem[],

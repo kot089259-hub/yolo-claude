@@ -438,32 +438,60 @@ app.post("/api/render", async (req, res) => {
 
             const subtitles = readJSON("_subtitles.json") || [];
             const subtitleStyle = readJSON("_style.json") || undefined;
-            const audioTracks = readJSON("_audio.json") || [];
             const editSettings = readJSON("_edit.json") || {};
 
-            console.log(`🔧 FFmpeg準備中 (job: ${jobId})...`);
-            const { prepareFFmpegRender } = await import("./ffmpegRender");
+            console.log(`🔧 FFmpeg軽量モード準備中 (job: ${jobId})...`);
 
-            const { command: baseCommand, assPath } = prepareFFmpegRender({
-                videoPath,
-                outputPath,
-                publicDir,
-                subtitles,
-                subtitleStyle,
-                trim: editSettings.trim,
-                transition: editSettings.transition,
-                speed: editSettings.speedSections?.[0]?.speed,
-                filters: editSettings.filters,
-                kenBurns: editSettings.kenBurns,
-                textOverlays: editSettings.textOverlays,
-                imageOverlays: editSettings.imageOverlays,
-                audioTracks,
-            });
+            // ★ 軽量モード: 複雑なフィルターを使わず、字幕+720pのみ
+            const { generateASSFile, getVideoInfo } = await import("./ffmpegRender");
 
-            // メモリ節約: -threads 1
-            const command = baseCommand.replace("ffmpeg -y", "ffmpeg -y -threads 1");
+            const videoInfo = getVideoInfo(videoPath);
+            console.log(`📐 動画情報: ${videoInfo.width}x${videoInfo.height}, ${videoInfo.duration.toFixed(1)}秒`);
+
+            // ASS字幕生成（字幕がある場合のみ）
+            const textOverlays = editSettings.textOverlays || [];
+            const hasSubtitles = subtitles.length > 0 || textOverlays.length > 0;
+            let assPath = "";
+            let assFilter = "";
+
+            if (hasSubtitles) {
+                assPath = outputPath.replace(/\.mp4$/, ".ass");
+                const assContent = generateASSFile(
+                    subtitles,
+                    subtitleStyle || {},
+                    textOverlays,
+                    videoInfo.width,
+                    videoInfo.height
+                );
+                fs.writeFileSync(assPath, assContent, "utf-8");
+                const escapedPath = assPath.replace(/\\/g, "/").replace(/:/g, "\\:");
+                assFilter = `,ass='${escapedPath}'`;
+            }
+
+            // トリム
+            const trimArgs: string[] = [];
+            if (editSettings.trim?.startTime && editSettings.trim.startTime > 0) {
+                trimArgs.push(`-ss ${editSettings.trim.startTime}`);
+            }
+            if (editSettings.trim?.endTime) {
+                trimArgs.push(`-to ${editSettings.trim.endTime}`);
+            }
+
+            // ★ シンプルなFFmpegコマンド（720p + 字幕のみ）
+            const command = [
+                "ffmpeg -y -threads 1",
+                ...trimArgs,
+                `-i "${videoPath}"`,
+                `-vf "scale=-2:720${assFilter}"`,
+                "-c:v libx264 -preset ultrafast -crf 28",
+                "-c:a aac -b:a 128k",
+                "-bufsize 1M -maxrate 2M",
+                "-movflags +faststart",
+                `"${outputPath}"`,
+            ].join(" ");
 
             console.log(`🎬 FFmpeg実行開始 (job: ${jobId})`);
+            console.log(`   CMD: ${command.slice(0, 200)}...`);
 
             // ★ spawn を使用（exec と違い出力をメモリにバッファリングしない）
             const { spawn } = await import("child_process");
