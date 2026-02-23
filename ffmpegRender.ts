@@ -29,6 +29,8 @@ interface SubtitleStyle {
     posY: number;
     bold: boolean;
     animation: string;
+    outlineWidth: number;
+    outlineColor: string;
 }
 
 interface FilterSettings {
@@ -120,6 +122,8 @@ const defaultStyle: SubtitleStyle = {
     posY: 90,
     bold: true,
     animation: "fadeIn",
+    outlineWidth: 0,
+    outlineColor: "#000000",
 };
 
 // ── Hex色 → ASS色変換 (&HBBGGRR) ──
@@ -184,6 +188,12 @@ export function generateASSFile(
     if (s.position === "top") alignment = 8;
     else if (s.position === "center") alignment = 5;
 
+    // 縁取り設定
+    const outlineWidth = s.outlineWidth || 0;
+    const outlineColor = s.outlineColor ? hexToASS(s.outlineColor) : '&H00000000';
+    // BorderStyle: 1=縁取り+影, 3=背景ボックス
+    const borderStyle = outlineWidth > 0 ? 1 : 3;
+
     const assContent = `[Script Info]
 Title: Video Subtitles
 ScriptType: v4.00+
@@ -193,7 +203,7 @@ WrapStyle: 0
 
 [V4+ Styles]
 Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
-Style: Default,${s.fontFamily},${s.fontSize},${hexToASS(s.fontColor)},${hexToASS(s.fontColor)},&H00000000,${bgASS},${s.bold ? -1 : 0},0,0,0,100,100,0,0,3,0,0,${alignment},40,40,60,1
+Style: Default,${s.fontFamily},${s.fontSize},${hexToASS(s.fontColor)},${hexToASS(s.fontColor)},${outlineColor},${bgASS},${s.bold ? -1 : 0},0,0,0,100,100,0,0,${borderStyle},${outlineWidth},0,${alignment},40,40,60,1
 Style: Telop,Noto Sans CJK JP,36,&H00FFFFFF,&H00FFFFFF,&H00000000,&H80000000,0,0,0,0,100,100,0,0,3,0,0,5,10,10,10,1
 
 [Events]

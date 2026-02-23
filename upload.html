@@ -1890,6 +1890,18 @@
               </div>
             </div>
             <div class="style-field">
+              <label>縁取り幅 (px)</label>
+              <input type="number" id="styleOutlineWidth" value="0" min="0" max="10" step="1" onchange="updateStyle()">
+            </div>
+            <div class="style-field">
+              <label>縁取り色</label>
+              <div class="color-row">
+                <input type="color" id="styleOutlineColor" value="#000000" onchange="updateStyle()">
+                <input type="text" class="color-hex" id="styleOutlineColorHex" value="#000000"
+                  onchange="document.getElementById('styleOutlineColor').value=this.value; updateStyle()">
+              </div>
+            </div>
+            <div class="style-field">
               <label>文字の色</label>
               <div class="color-row">
                 <input type="color" id="styleFontColor" value="#ffffff" onchange="updateStyle()">
@@ -2288,7 +2300,9 @@
       posX: 50,
       posY: 90,
       bold: true,
-      animation: "fadeIn"
+      animation: "fadeIn",
+      outlineWidth: 0,
+      outlineColor: "#000000"
     };
     let audioTracks = [];
     let editSettings = {
@@ -2410,6 +2424,9 @@
       document.getElementById('styleBgColorHex').value = currentStyle.bgColor;
       document.getElementById('boldLabel').textContent = currentStyle.bold ? 'ON' : 'OFF';
       currentStyle.animation = document.getElementById('styleAnimation').value;
+      currentStyle.outlineWidth = parseInt(document.getElementById('styleOutlineWidth').value) || 0;
+      currentStyle.outlineColor = document.getElementById('styleOutlineColor').value;
+      document.getElementById('styleOutlineColorHex').value = currentStyle.outlineColor;
       document.getElementById('customPosField').style.display = currentStyle.position === 'custom' ? '' : 'none';
       updatePreview();
     }
@@ -2433,6 +2450,12 @@
       text.style.fontSize = Math.min(currentStyle.fontSize, 32) + 'px';
       text.style.fontWeight = currentStyle.bold ? 'bold' : 'normal';
       text.style.fontFamily = `'${currentStyle.fontFamily}', sans-serif`;
+      if (currentStyle.outlineWidth > 0) {
+        text.style.webkitTextStroke = `${currentStyle.outlineWidth}px ${currentStyle.outlineColor}`;
+        text.style.paintOrder = 'stroke fill';
+      } else {
+        text.style.webkitTextStroke = '';
+      }
       if (currentStyle.position === 'custom') {
         preview.style.alignItems = 'center';
         text.style.position = 'absolute';
