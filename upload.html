@@ -2981,21 +2981,19 @@
       status.textContent = '\u203b \u8a2d\u5b9a\u3092\u4fdd\u5b58\u4e2d...';
       result.innerHTML = '';
       try {
-        // ステップ1: 設定保存（個別にエラーハンドリング）
-        try { await saveSubtitles(); } catch(e) { throw new Error('字幕保存失敗: ' + e.message); }
-        try { await saveStyle(); } catch(e) { throw new Error('スタイル保存失敗: ' + e.message); }
-        try { await saveAudioTracks(); } catch(e) { throw new Error('オーディオ保存失敗: ' + e.message); }
-        try { await saveEditSettings(); } catch(e) { throw new Error('編集設定保存失敗: ' + e.message); }
+        // ステップ1: 設定保存
+        try { await saveSubtitles(); } catch (e) { throw new Error('字幕保存失敗: ' + e.message); }
+        try { await saveStyle(); } catch (e) { throw new Error('スタイル保存失敗: ' + e.message); }
+        try { await saveAudioTracks(); } catch (e) { throw new Error('オーディオ保存失敗: ' + e.message); }
+        try { await saveEditSettings(); } catch (e) { throw new Error('編集設定保存失敗: ' + e.message); }
 
-        // ステップ2: レンダリング
-        status.textContent = '\u203b \u30ec\u30f3\u30c0\u30ea\u30f3\u30b0\u4e2d... \u6570\u5206\u304b\u304b\u308b\u5834\u5408\u304c\u3042\u308a\u307e\u3059';
-        console.log('render: sending request to', `${SERVER}/api/render`, 'filename:', currentFilename);
+        // ステップ2: レンダリングジョブ開始
+        status.textContent = '\u203b \u30ec\u30f3\u30c0\u30ea\u30f3\u30b0\u958b\u59cb\u4e2d...';
         const res = await fetch(`${SERVER}/api/render`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ filename: currentFilename }),
         });
-        console.log('render: response status', res.status);
         if (!res.ok) {
           const text = await res.text();
           let errMsg;
@@ -3003,9 +3001,41 @@
           throw new Error(errMsg || `HTTP ${res.status}`);
         }
         const data = await res.json();
+        const jobId = data.jobId;
+        if (!jobId) throw new Error('ジョブIDが取得できませんでした');
+
+        // ステップ3: ステータスポーリング
+        status.textContent = '\u203b FFmpeg\u3067\u30ec\u30f3\u30c0\u30ea\u30f3\u30b0\u4e2d... \u6570\u5206\u304b\u304b\u308a\u307e\u3059';
+        let dots = 0;
+        const pollInterval = setInterval(async () => {
+          dots = (dots + 1) % 4;
+          status.textContent = '\u203b FFmpeg\u3067\u30ec\u30f3\u30c0\u30ea\u30f3\u30b0\u4e2d' + '.'.repeat(dots + 1);
+        }, 1000);
+
+        const jobResult = await new Promise((resolve, reject) => {
+          const check = async () => {
+            try {
+              const statusRes = await fetch(`${SERVER}/api/render-status/${jobId}`);
+              const job = await statusRes.json();
+              if (job.status === 'done') {
+                clearInterval(pollInterval);
+                resolve(job);
+              } else if (job.status === 'error') {
+                clearInterval(pollInterval);
+                reject(new Error(job.error || 'レンダリングに失敗'));
+              } else {
+                setTimeout(check, 3000);
+              }
+            } catch (e) {
+              setTimeout(check, 5000);
+            }
+          };
+          setTimeout(check, 3000);
+        });
+
         status.className = 'render-status success';
         status.textContent = '\u2705 \u30ec\u30f3\u30c0\u30ea\u30f3\u30b0\u5b8c\u4e86\uff01';
-        result.innerHTML = `<a class="download-link" href="${SERVER}/${data.path}" download="${data.filename}">\u2b07 ${data.filename} \u3092\u30c0\u30a6\u30f3\u30ed\u30fc\u30c9</a>`;
+        result.innerHTML = `<a class="download-link" href="${SERVER}/${jobResult.path}" download="${jobResult.filename}">\u2b07 ${jobResult.filename} \u3092\u30c0\u30a6\u30f3\u30ed\u30fc\u30c9</a>`;
       } catch (error) {
         status.className = 'render-status error';
         status.textContent = `\u274c \u30a8\u30e9\u30fc: ${error.message}`;

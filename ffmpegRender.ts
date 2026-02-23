@@ -384,8 +384,8 @@ function buildFilterComplex(
     };
 }
 
-// ── メインレンダリング関数 ──
-export function renderWithFFmpeg(opts: RenderOptions): void {
+// ── メインレンダリング準備関数（コマンドを返す、実行はしない） ──
+export function prepareFFmpegRender(opts: RenderOptions): { command: string; assPath: string } {
     const videoInfo = getVideoInfo(opts.videoPath);
     console.log(`📐 動画情報: ${videoInfo.width}x${videoInfo.height}, ${videoInfo.duration.toFixed(1)}秒, ${videoInfo.fps.toFixed(1)}fps`);
 
@@ -446,7 +446,6 @@ export function renderWithFFmpeg(opts: RenderOptions): void {
     const hasSubtitles = (opts.subtitles && opts.subtitles.length > 0) || (opts.textOverlays && opts.textOverlays.length > 0);
     if (hasSubtitles) {
         const out = `vfinal`;
-        // assフィルターでパスを指定（: をエスケープ）
         const escapedAssPath = assPath.replace(/\\/g, "/").replace(/:/g, "\\:");
         if (filterComplex) {
             filterParts.push(`[${videoOut}]ass='${escapedAssPath}'[${out}]`);
@@ -457,7 +456,7 @@ export function renderWithFFmpeg(opts: RenderOptions): void {
     }
 
     // 画像オーバーレイフィルター
-    let inputIdx = 1; // 0 = メイン動画
+    let inputIdx = 1;
     for (let i = 0; i < imageOverlays.length; i++) {
         const item = imageOverlays[i];
         const imgPath = path.join(opts.publicDir, item.filename);
@@ -468,7 +467,6 @@ export function renderWithFFmpeg(opts: RenderOptions): void {
         const y = `(H*${item.posY / 100}-h/2)`;
         const enableExpr = `between(t,${item.startTime},${item.endTime})`;
 
-        // 画像のリサイズ
         const scaleLabel = `imgscale${i}`;
         filterParts.push(`[${inputIdx}:v]scale=${item.width}:-1[${scaleLabel}]`);
         filterParts.push(
@@ -520,16 +518,6 @@ export function renderWithFFmpeg(opts: RenderOptions): void {
     cmd += ` -movflags +faststart`;
     cmd += ` "${opts.outputPath}"`;
 
-    console.log(`🎬 FFmpegコマンド実行中...`);
-    console.log(`   出力: ${path.basename(opts.outputPath)}`);
-
-    try {
-        execSync(cmd, { stdio: "inherit", timeout: 1800000, maxBuffer: 50 * 1024 * 1024 });
-        console.log(`✅ レンダリング完了: ${path.basename(opts.outputPath)}`);
-    } finally {
-        // ASS字幕ファイルを削除
-        if (fs.existsSync(assPath)) {
-            fs.unlinkSync(assPath);
-        }
-    }
+    return { command: cmd, assPath };
 }
+
