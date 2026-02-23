@@ -383,15 +383,21 @@ app.post("/api/upload-image", upload.single("image"), (req, res) => {
     res.json({ filename: req.file.filename });
 });
 
-// ── レンダリングジョブ管理（ディスク永続化） ──
+// ── レンダリングジョブ管理（ディスク永続化 — public/ に保存） ──
 function setJobStatus(jobId: string, status: any) {
-    const jobDir = path.join(__dirname, "output");
-    if (!fs.existsSync(jobDir)) fs.mkdirSync(jobDir, { recursive: true });
-    fs.writeFileSync(path.join(jobDir, `${jobId}.job.json`), JSON.stringify(status));
+    try {
+        const jobPath = path.join(__dirname, "public", `${jobId}.job.json`);
+        fs.writeFileSync(jobPath, JSON.stringify(status));
+        console.log(`📋 ジョブ状態保存: ${jobId} → ${status.status} (${jobPath})`);
+    } catch (err: any) {
+        console.error(`❌ ジョブ状態保存エラー: ${jobId}`, err.message);
+    }
 }
 function getJobStatus(jobId: string): any | null {
-    const p = path.join(__dirname, "output", `${jobId}.job.json`);
-    if (fs.existsSync(p)) return JSON.parse(fs.readFileSync(p, "utf-8"));
+    const jobPath = path.join(__dirname, "public", `${jobId}.job.json`);
+    const exists = fs.existsSync(jobPath);
+    console.log(`🔍 ジョブ状態確認: ${jobId} → exists=${exists} (${jobPath})`);
+    if (exists) return JSON.parse(fs.readFileSync(jobPath, "utf-8"));
     return null;
 }
 
