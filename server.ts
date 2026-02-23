@@ -28,8 +28,10 @@ const storage = multer.diskStorage({
         cb(null, dir);
     },
     filename: (_req, file, cb) => {
-        // 元のファイル名を保持
-        cb(null, file.originalname);
+        // 安全なファイル名（日本語ファイル名の文字化け・長すぎ対策）
+        const ext = path.extname(file.originalname) || ".mp4";
+        const safeName = `upload_${Date.now()}${ext}`;
+        cb(null, safeName);
     },
 });
 

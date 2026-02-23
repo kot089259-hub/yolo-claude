@@ -12,3 +12,4 @@ public/*.mov
 public/*.mp4
 output/
 build/
+public/
