@@ -383,7 +383,7 @@ app.post("/api/upload-image", upload.single("image"), (req, res) => {
     res.json({ filename: req.file.filename });
 });
 
-// MP4レンダリングAPI
+// MP4レンダリングAPI（FFmpeg直接レンダリング — Chromium不要）
 app.post("/api/render", async (req, res) => {
     const { filename } = req.body;
     if (!filename) {
@@ -395,22 +395,44 @@ app.post("/api/render", async (req, res) => {
     if (!fs.existsSync(outputDir)) fs.mkdirSync(outputDir, { recursive: true });
 
     const baseName = path.parse(filename).name;
+    const videoPath = path.join(__dirname, "public", filename);
     const outputPath = path.join(outputDir, `${baseName}_rendered.mp4`);
     const relOutput = `output/${baseName}_rendered.mp4`;
+    const publicDir = path.join(__dirname, "public");
 
-    console.log(`🎬 レンダリング開始: ${baseName}`);
-
-    // current_config.json を更新して正しい動画ファイルを指定
-    const configPath = path.join(__dirname, "public", "current_config.json");
-    fs.writeFileSync(configPath, JSON.stringify({ videoFileName: filename }, null, 2));
+    console.log(`🎬 FFmpegレンダリング開始: ${baseName}`);
 
     try {
-        const { execSync } = await import("child_process");
-        const propsJson = JSON.stringify({ videoFileName: filename });
-        execSync(
-            `npx remotion render MyComp "${outputPath}" --codec=h264 --concurrency=1 --gl=angle --props='${propsJson}'`,
-            { cwd: __dirname, stdio: "inherit", timeout: 1800000 }
-        );
+        // 保存された設定ファイルを読み込む
+        const readJSON = (suffix: string) => {
+            const p = path.join(publicDir, `${baseName}${suffix}`);
+            if (fs.existsSync(p)) return JSON.parse(fs.readFileSync(p, "utf-8"));
+            return null;
+        };
+
+        const subtitles = readJSON("_subtitles.json") || [];
+        const subtitleStyle = readJSON("_style.json") || undefined;
+        const audioTracks = readJSON("_audio.json") || [];
+        const editSettings = readJSON("_edit.json") || {};
+
+        const { renderWithFFmpeg } = await import("./ffmpegRender");
+
+        renderWithFFmpeg({
+            videoPath,
+            outputPath,
+            publicDir,
+            subtitles,
+            subtitleStyle,
+            trim: editSettings.trim,
+            transition: editSettings.transition,
+            speed: editSettings.speedSections?.[0]?.speed,
+            filters: editSettings.filters,
+            kenBurns: editSettings.kenBurns,
+            textOverlays: editSettings.textOverlays,
+            imageOverlays: editSettings.imageOverlays,
+            audioTracks,
+        });
+
         console.log(`✅ レンダリング完了: ${relOutput}`);
         res.json({ success: true, path: relOutput, filename: `${baseName}_rendered.mp4` });
     } catch (error: any) {
