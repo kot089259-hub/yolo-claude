@@ -1890,6 +1890,23 @@
               </div>
             </div>
             <div class="style-field">
+              <label>カラープリセット</label>
+              <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:6px; margin-top:4px">
+                <button onclick="applyColorPreset('#ffffff','#0055ff',3)"
+                  style="padding:6px 4px; border-radius:6px; border:1px solid #444; cursor:pointer; font-size:11px; font-weight:bold; background:#0055ff; color:#fff; -webkit-text-stroke:1px #0055ff">白-青</button>
+                <button onclick="applyColorPreset('#ffffff','#dd0000',3)"
+                  style="padding:6px 4px; border-radius:6px; border:1px solid #444; cursor:pointer; font-size:11px; font-weight:bold; background:#dd0000; color:#fff; -webkit-text-stroke:1px #dd0000">白-赤</button>
+                <button onclick="applyColorPreset('#ffffff','#000000',3)"
+                  style="padding:6px 4px; border-radius:6px; border:1px solid #444; cursor:pointer; font-size:11px; font-weight:bold; background:#333; color:#fff; -webkit-text-stroke:1px #000">白-黒</button>
+                <button onclick="applyColorPreset('#ffdd00','#000000',3)"
+                  style="padding:6px 4px; border-radius:6px; border:1px solid #444; cursor:pointer; font-size:11px; font-weight:bold; background:#333; color:#ffdd00; -webkit-text-stroke:1px #000">黄-黒</button>
+                <button onclick="applyColorPreset('#66ddff','#001a4d',3)"
+                  style="padding:6px 4px; border-radius:6px; border:1px solid #444; cursor:pointer; font-size:11px; font-weight:bold; background:#001a4d; color:#66ddff; -webkit-text-stroke:1px #001a4d">水色-紺</button>
+                <button onclick="applyColorPreset('#000000','#ffffff',3)"
+                  style="padding:6px 4px; border-radius:6px; border:1px solid #444; cursor:pointer; font-size:11px; font-weight:bold; background:#eee; color:#000; -webkit-text-stroke:1px #fff">黒-白</button>
+              </div>
+            </div>
+            <div class="style-field">
               <label>縁取り幅 (px)</label>
               <input type="number" id="styleOutlineWidth" value="0" min="0" max="10" step="1" onchange="updateStyle()">
             </div>
@@ -2409,6 +2426,16 @@
         const icon = el.querySelector(".step-icon");
         icon.textContent = "❌";
       }
+    }
+
+    function applyColorPreset(fontColor, outlineColor, outlineWidth) {
+      document.getElementById('styleFontColor').value = fontColor;
+      document.getElementById('styleFontColorHex').value = fontColor;
+      document.getElementById('styleOutlineColor').value = outlineColor;
+      document.getElementById('styleOutlineColorHex').value = outlineColor;
+      document.getElementById('styleOutlineWidth').value = outlineWidth;
+      document.getElementById('styleBgOpacity').value = '0';
+      updateStyle();
     }
 
     function updateStyle() {
