@@ -35,7 +35,7 @@ const storage = multer.diskStorage({
 
 const upload = multer({
     storage,
-    limits: { fileSize: 500 * 1024 * 1024 }, // 500MB max
+    limits: { fileSize: 2000 * 1024 * 1024 }, // 2GB max
 });
 
 // 動画アップロードAPI
