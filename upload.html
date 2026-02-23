@@ -2978,16 +2978,30 @@
       btn.disabled = true;
       btn.textContent = '\u23f3 \u30ec\u30f3\u30c0\u30ea\u30f3\u30b0\u4e2d...';
       status.className = 'render-status';
-      status.textContent = '\u203b \u51e6\u7406\u4e2d\u3067\u3059\u3002\u6570\u5206\u304b\u304b\u308b\u5834\u5408\u304c\u3042\u308a\u307e\u3059...';
+      status.textContent = '\u203b \u8a2d\u5b9a\u3092\u4fdd\u5b58\u4e2d...';
       result.innerHTML = '';
       try {
-        await Promise.all([saveSubtitles(), saveStyle(), saveAudioTracks(), saveEditSettings()]);
+        // ステップ1: 設定保存（個別にエラーハンドリング）
+        try { await saveSubtitles(); } catch(e) { throw new Error('字幕保存失敗: ' + e.message); }
+        try { await saveStyle(); } catch(e) { throw new Error('スタイル保存失敗: ' + e.message); }
+        try { await saveAudioTracks(); } catch(e) { throw new Error('オーディオ保存失敗: ' + e.message); }
+        try { await saveEditSettings(); } catch(e) { throw new Error('編集設定保存失敗: ' + e.message); }
+
+        // ステップ2: レンダリング
+        status.textContent = '\u203b \u30ec\u30f3\u30c0\u30ea\u30f3\u30b0\u4e2d... \u6570\u5206\u304b\u304b\u308b\u5834\u5408\u304c\u3042\u308a\u307e\u3059';
+        console.log('render: sending request to', `${SERVER}/api/render`, 'filename:', currentFilename);
         const res = await fetch(`${SERVER}/api/render`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ filename: currentFilename }),
         });
-        if (!res.ok) { const err = await res.json(); throw new Error(err.error); }
+        console.log('render: response status', res.status);
+        if (!res.ok) {
+          const text = await res.text();
+          let errMsg;
+          try { errMsg = JSON.parse(text).error; } catch { errMsg = text; }
+          throw new Error(errMsg || `HTTP ${res.status}`);
+        }
         const data = await res.json();
         status.className = 'render-status success';
         status.textContent = '\u2705 \u30ec\u30f3\u30c0\u30ea\u30f3\u30b0\u5b8c\u4e86\uff01';
@@ -2995,6 +3009,7 @@
       } catch (error) {
         status.className = 'render-status error';
         status.textContent = `\u274c \u30a8\u30e9\u30fc: ${error.message}`;
+        console.error('render error:', error);
       } finally {
         btn.disabled = false;
         btn.textContent = '\ud83d\udce6 \u52d5\u753b\u3092\u66f8\u304d\u51fa\u3057';
