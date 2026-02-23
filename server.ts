@@ -383,8 +383,17 @@ app.post("/api/upload-image", upload.single("image"), (req, res) => {
     res.json({ filename: req.file.filename });
 });
 
-// ── レンダリングジョブ管理 ──
-const renderJobs: Map<string, { status: "rendering" | "done" | "error"; path?: string; filename?: string; error?: string }> = new Map();
+// ── レンダリングジョブ管理（ディスク永続化） ──
+function setJobStatus(jobId: string, status: any) {
+    const jobDir = path.join(__dirname, "output");
+    if (!fs.existsSync(jobDir)) fs.mkdirSync(jobDir, { recursive: true });
+    fs.writeFileSync(path.join(jobDir, `${jobId}.job.json`), JSON.stringify(status));
+}
+function getJobStatus(jobId: string): any | null {
+    const p = path.join(__dirname, "output", `${jobId}.job.json`);
+    if (fs.existsSync(p)) return JSON.parse(fs.readFileSync(p, "utf-8"));
+    return null;
+}
 
 // MP4レンダリングAPI（非同期 — FFmpegをバックグラウンドで実行）
 app.post("/api/render", async (req, res) => {
@@ -396,11 +405,11 @@ app.post("/api/render", async (req, res) => {
 
     const baseName = path.parse(filename).name;
     const jobId = `${baseName}_${Date.now()}`;
-    renderJobs.set(jobId, { status: "rendering" });
+    setJobStatus(jobId, { status: "rendering" });
 
     console.log(`🎬 レンダリングジョブ受付 (job: ${jobId})`);
 
-    // ★ 先にレスポンスを返す（サーバーが応答不能にならないようにする）
+    // ★ 先にレスポンスを返す
     res.json({ jobId });
 
     // ★ 重い処理はレスポンス送信後に非同期で実行
@@ -450,11 +459,11 @@ app.post("/api/render", async (req, res) => {
 
             console.log(`🎬 FFmpeg実行開始 (job: ${jobId})`);
 
-            const { exec } = await import("child_process");
-            const child = exec(command, { maxBuffer: 50 * 1024 * 1024 });
+            // ★ spawn を使用（exec と違い出力をメモリにバッファリングしない）
+            const { spawn } = await import("child_process");
+            const child = spawn("sh", ["-c", command], { stdio: ["ignore", "pipe", "pipe"] });
 
-            child.stderr?.on("data", (data: string) => {
-                // FFmpegの進捗をログに出力（間引き）
+            child.stderr?.on("data", (data: Buffer) => {
                 const str = data.toString();
                 if (str.includes("frame=") || str.includes("Error") || str.includes("error")) {
                     console.log(`  [ffmpeg] ${str.trim().slice(0, 120)}`);
@@ -467,14 +476,14 @@ app.post("/api/render", async (req, res) => {
                 }
                 if (code === 0) {
                     console.log(`✅ レンダリング完了 (job: ${jobId})`);
-                    renderJobs.set(jobId, {
+                    setJobStatus(jobId, {
                         status: "done",
                         path: relOutput,
                         filename: `${baseName}_rendered.mp4`,
                     });
                 } else {
                     console.error(`❌ FFmpeg終了コード: ${code} (job: ${jobId})`);
-                    renderJobs.set(jobId, {
+                    setJobStatus(jobId, {
                         status: "error",
                         error: `FFmpegがエラーコード ${code} で終了しました`,
                     });
@@ -483,19 +492,19 @@ app.post("/api/render", async (req, res) => {
 
             child.on("error", (err: Error) => {
                 console.error(`❌ FFmpegエラー (job: ${jobId}):`, err.message);
-                renderJobs.set(jobId, { status: "error", error: err.message });
+                setJobStatus(jobId, { status: "error", error: err.message });
             });
 
         } catch (error: any) {
             console.error(`❌ レンダリング準備エラー (job: ${jobId}):`, error.message);
-            renderJobs.set(jobId, { status: "error", error: error.message });
+            setJobStatus(jobId, { status: "error", error: error.message });
         }
     });
 });
 
-// レンダリングステータス確認API
+// レンダリングステータス確認API（ディスクから読み込み — 再起動に耐える）
 app.get("/api/render-status/:jobId", (req, res) => {
-    const job = renderJobs.get(req.params.jobId);
+    const job = getJobStatus(req.params.jobId);
     if (!job) {
         res.status(404).json({ error: "ジョブが見つかりません" });
         return;
