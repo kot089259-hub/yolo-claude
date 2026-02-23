@@ -394,94 +394,103 @@ app.post("/api/render", async (req, res) => {
         return;
     }
 
-    const outputDir = path.join(__dirname, "output");
-    if (!fs.existsSync(outputDir)) fs.mkdirSync(outputDir, { recursive: true });
-
     const baseName = path.parse(filename).name;
-    const videoPath = path.join(__dirname, "public", filename);
-    const outputPath = path.join(outputDir, `${baseName}_rendered.mp4`);
-    const relOutput = `output/${baseName}_rendered.mp4`;
-    const publicDir = path.join(__dirname, "public");
-
     const jobId = `${baseName}_${Date.now()}`;
     renderJobs.set(jobId, { status: "rendering" });
 
-    console.log(`🎬 FFmpegレンダリング開始 (job: ${jobId})`);
+    console.log(`🎬 レンダリングジョブ受付 (job: ${jobId})`);
 
-    try {
-        // 保存された設定ファイルを読み込む
-        const readJSON = (suffix: string) => {
-            const p = path.join(publicDir, `${baseName}${suffix}`);
-            if (fs.existsSync(p)) return JSON.parse(fs.readFileSync(p, "utf-8"));
-            return null;
-        };
+    // ★ 先にレスポンスを返す（サーバーが応答不能にならないようにする）
+    res.json({ jobId });
 
-        const subtitles = readJSON("_subtitles.json") || [];
-        const subtitleStyle = readJSON("_style.json") || undefined;
-        const audioTracks = readJSON("_audio.json") || [];
-        const editSettings = readJSON("_edit.json") || {};
+    // ★ 重い処理はレスポンス送信後に非同期で実行
+    setImmediate(async () => {
+        try {
+            const outputDir = path.join(__dirname, "output");
+            if (!fs.existsSync(outputDir)) fs.mkdirSync(outputDir, { recursive: true });
 
-        const { prepareFFmpegRender } = await import("./ffmpegRender");
+            const videoPath = path.join(__dirname, "public", filename);
+            const outputPath = path.join(outputDir, `${baseName}_rendered.mp4`);
+            const relOutput = `output/${baseName}_rendered.mp4`;
+            const publicDir = path.join(__dirname, "public");
 
-        const { command, assPath } = prepareFFmpegRender({
-            videoPath,
-            outputPath,
-            publicDir,
-            subtitles,
-            subtitleStyle,
-            trim: editSettings.trim,
-            transition: editSettings.transition,
-            speed: editSettings.speedSections?.[0]?.speed,
-            filters: editSettings.filters,
-            kenBurns: editSettings.kenBurns,
-            textOverlays: editSettings.textOverlays,
-            imageOverlays: editSettings.imageOverlays,
-            audioTracks,
-        });
+            // 設定ファイル読み込み
+            const readJSON = (suffix: string) => {
+                const p = path.join(publicDir, `${baseName}${suffix}`);
+                if (fs.existsSync(p)) return JSON.parse(fs.readFileSync(p, "utf-8"));
+                return null;
+            };
 
-        console.log(`🎬 FFmpegコマンド実行中(非同期)...`);
+            const subtitles = readJSON("_subtitles.json") || [];
+            const subtitleStyle = readJSON("_style.json") || undefined;
+            const audioTracks = readJSON("_audio.json") || [];
+            const editSettings = readJSON("_edit.json") || {};
 
-        // 非同期でFFmpegを実行（event loopをブロックしない）
-        const { exec } = await import("child_process");
-        const child = exec(command, { maxBuffer: 50 * 1024 * 1024 });
+            console.log(`🔧 FFmpeg準備中 (job: ${jobId})...`);
+            const { prepareFFmpegRender } = await import("./ffmpegRender");
 
-        child.stdout?.on("data", (data: string) => console.log(data));
-        child.stderr?.on("data", (data: string) => console.log(data));
+            const { command: baseCommand, assPath } = prepareFFmpegRender({
+                videoPath,
+                outputPath,
+                publicDir,
+                subtitles,
+                subtitleStyle,
+                trim: editSettings.trim,
+                transition: editSettings.transition,
+                speed: editSettings.speedSections?.[0]?.speed,
+                filters: editSettings.filters,
+                kenBurns: editSettings.kenBurns,
+                textOverlays: editSettings.textOverlays,
+                imageOverlays: editSettings.imageOverlays,
+                audioTracks,
+            });
 
-        child.on("close", (code: number | null) => {
-            // ASS字幕ファイルを削除
-            if (fs.existsSync(assPath)) {
-                try { fs.unlinkSync(assPath); } catch { }
-            }
+            // メモリ節約: -threads 1
+            const command = baseCommand.replace("ffmpeg -y", "ffmpeg -y -threads 1");
 
-            if (code === 0) {
-                console.log(`✅ レンダリング完了 (job: ${jobId})`);
-                renderJobs.set(jobId, {
-                    status: "done",
-                    path: relOutput,
-                    filename: `${baseName}_rendered.mp4`,
-                });
-            } else {
-                console.error(`❌ FFmpeg終了コード: ${code} (job: ${jobId})`);
-                renderJobs.set(jobId, {
-                    status: "error",
-                    error: `FFmpegがエラーコード ${code} で終了しました`,
-                });
-            }
-        });
+            console.log(`🎬 FFmpeg実行開始 (job: ${jobId})`);
 
-        child.on("error", (err: Error) => {
-            console.error(`❌ FFmpegエラー (job: ${jobId}):`, err.message);
-            renderJobs.set(jobId, { status: "error", error: err.message });
-        });
+            const { exec } = await import("child_process");
+            const child = exec(command, { maxBuffer: 50 * 1024 * 1024 });
 
-        // すぐにジョブIDを返す（レスポンスを即座に返す）
-        res.json({ jobId });
-    } catch (error: any) {
-        console.error("レンダリング準備エラー:", error.message);
-        renderJobs.set(jobId, { status: "error", error: error.message });
-        res.status(500).json({ error: "レンダリングに失敗しました: " + error.message });
-    }
+            child.stderr?.on("data", (data: string) => {
+                // FFmpegの進捗をログに出力（間引き）
+                const str = data.toString();
+                if (str.includes("frame=") || str.includes("Error") || str.includes("error")) {
+                    console.log(`  [ffmpeg] ${str.trim().slice(0, 120)}`);
+                }
+            });
+
+            child.on("close", (code: number | null) => {
+                if (fs.existsSync(assPath)) {
+                    try { fs.unlinkSync(assPath); } catch { }
+                }
+                if (code === 0) {
+                    console.log(`✅ レンダリング完了 (job: ${jobId})`);
+                    renderJobs.set(jobId, {
+                        status: "done",
+                        path: relOutput,
+                        filename: `${baseName}_rendered.mp4`,
+                    });
+                } else {
+                    console.error(`❌ FFmpeg終了コード: ${code} (job: ${jobId})`);
+                    renderJobs.set(jobId, {
+                        status: "error",
+                        error: `FFmpegがエラーコード ${code} で終了しました`,
+                    });
+                }
+            });
+
+            child.on("error", (err: Error) => {
+                console.error(`❌ FFmpegエラー (job: ${jobId}):`, err.message);
+                renderJobs.set(jobId, { status: "error", error: err.message });
+            });
+
+        } catch (error: any) {
+            console.error(`❌ レンダリング準備エラー (job: ${jobId}):`, error.message);
+            renderJobs.set(jobId, { status: "error", error: error.message });
+        }
+    });
 });
 
 // レンダリングステータス確認API
