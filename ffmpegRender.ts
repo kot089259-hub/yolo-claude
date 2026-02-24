@@ -232,9 +232,8 @@ export function generateASSFile(
     const marginLR = Math.round(videoWidth * 0.05); // 左右マージン: 幅の5%
     const marginV = Math.round(videoHeight * 0.03);  // 上下マージン: 高さの3%
 
-    // 縦動画の場合、フォントサイズが幅に対して大きすぎると改行が崩れるので上限を設定
-    const maxFontSize = isVertical ? Math.round(videoWidth / 15) : s.fontSize;
-    const effectiveFontSize = Math.min(s.fontSize, maxFontSize);
+    // フォントサイズ（wrapTextが改行を処理するのでキャップ不要）
+    const effectiveFontSize = s.fontSize;
 
     const assContent = `[Script Info]
 Title: Video Subtitles
@@ -253,7 +252,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 ${subtitles
             .map((sub) => {
                 const segFont = sub.fontFamily || s.fontFamily;
-                const segSize = sub.fontSize ? Math.min(sub.fontSize, maxFontSize) : effectiveFontSize;
+                const segSize = sub.fontSize || s.fontSize;
                 const segColor = sub.fontColor ? hexToASS(sub.fontColor) : hexToASS(s.fontColor);
                 const segBold = sub.bold !== undefined ? sub.bold : s.bold;
                 const segAnim = sub.animation || s.animation;
@@ -288,9 +287,8 @@ ${subtitles
                     overrides += `\\fad(300,0)`;
                 }
 
-                // 実際のレンダリングサイズ（キャップ後）でwrapTextを計算
-                const renderSize = sub.fontSize ? Math.min(sub.fontSize, maxFontSize) : effectiveFontSize;
-                const text = overrides ? `{${overrides}}${wrapText(sub.text, renderSize, videoWidth, marginLR)}` : wrapText(sub.text, renderSize, videoWidth, marginLR);
+                // 実際のレンダリングサイズでwrapTextを計算
+                const text = overrides ? `{${overrides}}${wrapText(sub.text, segSize, videoWidth, marginLR)}` : wrapText(sub.text, segSize, videoWidth, marginLR);
                 return `Dialogue: 0,${toASSTime(sub.start)},${toASSTime(sub.end)},Default,,0,0,0,,${text}`;
             })
             .join("\n")}
