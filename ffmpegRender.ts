@@ -194,17 +194,26 @@ export function generateASSFile(
     // BorderStyle: 1=縁取り+影, 3=背景ボックス
     const borderStyle = outlineWidth > 0 ? 1 : 3;
 
+    // 縦動画対応: マージンを動画幅に応じて動的に計算
+    const isVertical = videoHeight > videoWidth;
+    const marginLR = Math.round(videoWidth * 0.05); // 左右マージン: 幅の5%
+    const marginV = Math.round(videoHeight * 0.03);  // 上下マージン: 高さの3%
+
+    // 縦動画の場合、フォントサイズが幅に対して大きすぎると改行が崩れるので上限を設定
+    const maxFontSize = isVertical ? Math.round(videoWidth / 15) : s.fontSize;
+    const effectiveFontSize = Math.min(s.fontSize, maxFontSize);
+
     const assContent = `[Script Info]
 Title: Video Subtitles
 ScriptType: v4.00+
 PlayResX: ${videoWidth}
 PlayResY: ${videoHeight}
-WrapStyle: 0
+WrapStyle: 1
 
 [V4+ Styles]
 Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
-Style: Default,${s.fontFamily},${s.fontSize},${hexToASS(s.fontColor)},${hexToASS(s.fontColor)},${outlineColor},${bgASS},${s.bold ? -1 : 0},0,0,0,100,100,0,0,${borderStyle},${outlineWidth},0,${alignment},40,40,60,1
-Style: Telop,Noto Sans CJK JP,36,&H00FFFFFF,&H00FFFFFF,&H00000000,&H80000000,0,0,0,0,100,100,0,0,3,0,0,5,10,10,10,1
+Style: Default,${s.fontFamily},${effectiveFontSize},${hexToASS(s.fontColor)},${hexToASS(s.fontColor)},${outlineColor},${bgASS},${s.bold ? -1 : 0},0,0,0,100,100,0,0,${borderStyle},${outlineWidth},0,${alignment},${marginLR},${marginLR},${marginV},1
+Style: Telop,Noto Sans CJK JP,${isVertical ? Math.round(videoWidth / 18) : 36},&H00FFFFFF,&H00FFFFFF,&H00000000,&H80000000,0,0,0,0,100,100,0,0,3,0,0,5,${marginLR},${marginLR},${Math.round(videoHeight * 0.01)},1
 
 [Events]
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
