@@ -493,13 +493,12 @@ app.post("/api/render", async (req, res) => {
 
             // ★ シンプルなFFmpegコマンド（720p + 字幕のみ）
             const command = [
-                "ffmpeg -y -threads 1",
+                "ffmpeg -y",
                 ...trimArgs,
                 `-i "${videoPath}"`,
                 `-vf "scale=-2:720${assFilter}"`,
                 "-c:v libx264 -preset ultrafast -crf 28",
                 "-c:a aac -b:a 128k",
-                "-bufsize 1M -maxrate 2M",
                 "-movflags +faststart",
                 `"${outputPath}"`,
             ].join(" ");
