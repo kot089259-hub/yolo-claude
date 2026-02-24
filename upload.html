@@ -1835,6 +1835,68 @@
       .thumb-preview {
         max-width: 100%;
       }
+
+      /* Segment style fields — stack and full width */
+      .seg-field {
+        min-width: 0;
+      }
+
+      .seg-field select,
+      .seg-field input {
+        font-size: 14px;
+        padding: 8px;
+      }
+
+      /* Tab nav — horizontal scroll */
+      .tab-nav {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        flex-wrap: nowrap;
+      }
+
+      .tab-btn {
+        flex-shrink: 0;
+        min-width: 0;
+      }
+
+      /* Video preview — full height */
+      .video-preview {
+        border-radius: 0;
+        margin-left: -12px;
+        margin-right: -12px;
+      }
+
+      /* Subtitle overlay — less bottom offset for mobile controls */
+      .subtitle-overlay {
+        bottom: 32px;
+      }
+
+      /* Fix iOS zoom on input focus */
+      input[type="text"],
+      input[type="number"],
+      select,
+      textarea {
+        font-size: 16px !important;
+      }
+
+      /* Progress steps — compact */
+      .step {
+        padding: 10px;
+      }
+
+      .step-icon {
+        font-size: 18px;
+      }
+
+      .step-title {
+        font-size: 13px;
+      }
+
+      /* Export buttons stack */
+      .export-btn {
+        font-size: 14px;
+        padding: 14px 16px;
+      }
     }
   </style>
 </head>
