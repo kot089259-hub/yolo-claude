@@ -82,7 +82,8 @@ function whisperTranscribe(filePath: string, apiKey: string): { text: string; se
         "-F", `file=@${filePath}`,
         "-F", "model=whisper-1",
         "-F", "language=ja",
-        "-F", "response_format=verbose_json"
+        "-F", "response_format=verbose_json",
+        "-F", "prompt=日本語の音声を正確に文字起こししてください。絵文字や特殊記号は使わず、句読点を含む通常の日本語テキストのみを出力してください。"
     ], { encoding: "utf-8", maxBuffer: 50 * 1024 * 1024, timeout: 660000 });
 
     // プロセスエラー（curl自体が起動できない等）
