@@ -217,50 +217,6 @@ app.post("/api/transcribe", async (req, res) => {
 
         console.log(`✅ OpenAI Whisper API: ${subtitles.length}個のセグメントを検出`);
 
-        // 長いセグメントを自動分割（20文字以上のセグメントを分割）
-        const MAX_CHARS_PER_SEGMENT = 20;
-        const splitSubtitles: any[] = [];
-        for (const sub of subtitles) {
-            if (sub.text.length <= MAX_CHARS_PER_SEGMENT) {
-                splitSubtitles.push(sub);
-            } else {
-                // 句読点で分割を試みる
-                const parts: string[] = [];
-                let remaining = sub.text;
-                while (remaining.length > MAX_CHARS_PER_SEGMENT) {
-                    let splitAt = -1;
-                    for (let i = MAX_CHARS_PER_SEGMENT; i >= Math.floor(MAX_CHARS_PER_SEGMENT * 0.5); i--) {
-                        if ('、。！？,. '.includes(remaining[i])) {
-                            splitAt = i + 1;
-                            break;
-                        }
-                    }
-                    if (splitAt === -1) splitAt = MAX_CHARS_PER_SEGMENT;
-                    parts.push(remaining.slice(0, splitAt));
-                    remaining = remaining.slice(splitAt);
-                }
-                if (remaining) parts.push(remaining);
-
-                // 時間を均等に配分
-                const totalDuration = sub.end - sub.start;
-                const totalChars = sub.text.length;
-                let currentStart = sub.start;
-                for (let p = 0; p < parts.length; p++) {
-                    const partDuration = (parts[p].length / totalChars) * totalDuration;
-                    splitSubtitles.push({
-                        index: 0,
-                        start: Math.round(currentStart * 100) / 100,
-                        end: Math.round((currentStart + partDuration) * 100) / 100,
-                        text: parts[p],
-                    });
-                    currentStart += partDuration;
-                }
-            }
-        }
-        // インデックスを振り直す
-        subtitles = splitSubtitles.map((s, i) => ({ ...s, index: i }));
-        console.log(`📎 セグメント分割後: ${subtitles.length}個`);
-
         // 一時的な音声ファイルを削除
         fs.unlinkSync(audioPath);
 
