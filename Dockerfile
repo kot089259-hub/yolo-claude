@@ -12,7 +12,7 @@ WORKDIR /app
 
 # Copy package files first for caching
 COPY package.json package-lock.json* ./
-RUN npm install --omit=dev
+RUN npm install
 
 # Copy all source files
 COPY . .
@@ -24,4 +24,4 @@ RUN mkdir -p public output
 EXPOSE 10000
 
 # Start the server
-CMD ["node_modules/.bin/tsx", "server.ts"]
+CMD ["npx", "tsx", "server.ts"]
