@@ -170,7 +170,7 @@ function wrapText(text: string, fontSize: number, videoWidth: number, marginLR: 
     // 利用可能な幅 (マージン除く)
     const availableWidth = videoWidth - marginLR * 2;
     // 1文字あたりの推定幅（CJK文字は全角 ≈ fontSize、英数字は半角 ≈ fontSize * 0.6）
-    const avgCharWidth = fontSize * 0.85; // CJK混在の平均
+    const avgCharWidth = fontSize * 0.55; // CJK混在の平均（ASSレンダラーの実測に近い値）
     const charsPerLine = Math.max(4, Math.floor(availableWidth / avgCharWidth));
 
     if (text.length <= charsPerLine) return text;
@@ -253,7 +253,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 ${subtitles
             .map((sub) => {
                 const segFont = sub.fontFamily || s.fontFamily;
-                const segSize = sub.fontSize || s.fontSize;
+                const segSize = sub.fontSize ? Math.min(sub.fontSize, maxFontSize) : effectiveFontSize;
                 const segColor = sub.fontColor ? hexToASS(sub.fontColor) : hexToASS(s.fontColor);
                 const segBold = sub.bold !== undefined ? sub.bold : s.bold;
                 const segAnim = sub.animation || s.animation;
@@ -288,7 +288,9 @@ ${subtitles
                     overrides += `\\fad(300,0)`;
                 }
 
-                const text = overrides ? `{${overrides}}${wrapText(sub.text, segSize, videoWidth, marginLR)}` : wrapText(sub.text, segSize, videoWidth, marginLR);
+                // 実際のレンダリングサイズ（キャップ後）でwrapTextを計算
+                const renderSize = sub.fontSize ? Math.min(sub.fontSize, maxFontSize) : effectiveFontSize;
+                const text = overrides ? `{${overrides}}${wrapText(sub.text, renderSize, videoWidth, marginLR)}` : wrapText(sub.text, renderSize, videoWidth, marginLR);
                 return `Dialogue: 0,${toASSTime(sub.start)},${toASSTime(sub.end)},Default,,0,0,0,,${text}`;
             })
             .join("\n")}
