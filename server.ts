@@ -460,8 +460,8 @@ app.post("/api/render", async (req, res) => {
             console.log(`📐 動画情報: ${videoInfo.width}x${videoInfo.height}, ${videoInfo.duration.toFixed(1)}秒`);
 
             // ASS字幕生成（字幕がある場合のみ）
-            // ★ 720p出力に合わせたASS解像度を計算（文字が小さくならないように）
-            const outHeight = 720;
+            // ★ 1080p出力に合わせたASS解像度を計算（文字が小さくならないように）
+            const outHeight = 1080;
             const outWidth = Math.round(videoInfo.width * outHeight / videoInfo.height / 2) * 2; // 偶数に丸め
             const textOverlays = editSettings.textOverlays || [];
             const hasSubtitles = subtitles.length > 0 || textOverlays.length > 0;
@@ -491,13 +491,13 @@ app.post("/api/render", async (req, res) => {
                 trimArgs.push(`-to ${editSettings.trim.endTime}`);
             }
 
-            // ★ シンプルなFFmpegコマンド（720p + 字幕のみ）
+            // ★ シンプルなFFmpegコマンド（1080p + 字幕）
             const command = [
                 "ffmpeg -y",
                 ...trimArgs,
                 `-i "${videoPath}"`,
-                `-vf "scale=-2:720${assFilter}"`,
-                "-c:v libx264 -preset ultrafast -crf 28",
+                `-vf "scale=-2:1080${assFilter}"`,
+                "-c:v libx264 -preset fast -crf 23",
                 "-c:a aac -b:a 128k",
                 "-movflags +faststart",
                 `"${outputPath}"`,
