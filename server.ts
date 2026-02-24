@@ -742,7 +742,7 @@ app.post("/api/render", async (req, res) => {
                 ...trimArgs,
                 `-i "${videoPath}"`,
                 `-vf "scale=-2:1080${assFilter}"`,
-                "-c:v libx264 -preset fast -crf 23",
+                "-c:v libx264 -preset ultrafast -crf 20",
                 "-c:a aac -b:a 128k",
                 "-movflags +faststart",
                 `"${outputPath}"`,
