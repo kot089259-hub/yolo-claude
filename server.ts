@@ -460,6 +460,9 @@ app.post("/api/render", async (req, res) => {
             console.log(`📐 動画情報: ${videoInfo.width}x${videoInfo.height}, ${videoInfo.duration.toFixed(1)}秒`);
 
             // ASS字幕生成（字幕がある場合のみ）
+            // ★ 720p出力に合わせたASS解像度を計算（文字が小さくならないように）
+            const outHeight = 720;
+            const outWidth = Math.round(videoInfo.width * outHeight / videoInfo.height / 2) * 2; // 偶数に丸め
             const textOverlays = editSettings.textOverlays || [];
             const hasSubtitles = subtitles.length > 0 || textOverlays.length > 0;
             let assPath = "";
@@ -471,8 +474,8 @@ app.post("/api/render", async (req, res) => {
                     subtitles,
                     subtitleStyle || {},
                     textOverlays,
-                    videoInfo.width,
-                    videoInfo.height
+                    outWidth,
+                    outHeight
                 );
                 fs.writeFileSync(assPath, assContent, "utf-8");
                 const escapedPath = assPath.replace(/\\/g, "/").replace(/:/g, "\\:");
