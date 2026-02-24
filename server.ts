@@ -394,6 +394,42 @@ app.post("/api/upload-image", upload.single("image"), (req, res) => {
     res.json({ filename: req.file.filename });
 });
 
+// ── ディスク自動クリーンアップ（1時間以上前のファイルを削除） ──
+const CLEANUP_INTERVAL_MS = 10 * 60 * 1000; // 10分ごと
+const MAX_FILE_AGE_MS = 60 * 60 * 1000; // 1時間
+
+function cleanupOldFiles() {
+    const now = Date.now();
+    const dirs = [
+        path.join(__dirname, "public"),
+        path.join(__dirname, "output"),
+    ];
+    let deleted = 0;
+    for (const dir of dirs) {
+        if (!fs.existsSync(dir)) continue;
+        for (const file of fs.readdirSync(dir)) {
+            // 設定ファイルやindex系は除外
+            if (file === "current_config.json" || file === ".gitkeep") continue;
+            const filePath = path.join(dir, file);
+            try {
+                const stat = fs.statSync(filePath);
+                if (stat.isFile() && (now - stat.mtimeMs) > MAX_FILE_AGE_MS) {
+                    fs.unlinkSync(filePath);
+                    deleted++;
+                }
+            } catch { }
+        }
+    }
+    if (deleted > 0) console.log(`🧹 クリーンアップ: ${deleted}ファイル削除`);
+}
+
+setInterval(cleanupOldFiles, CLEANUP_INTERVAL_MS);
+console.log("🧹 自動クリーンアップ有効 (1時間以上前のファイルを10分ごとに削除)");
+
+// ── 同時レンダリング制限 ──
+const MAX_CONCURRENT_RENDERS = 2;
+let activeRenders = 0;
+
 // ── レンダリングジョブ管理（ディスク永続化 — public/ に保存） ──
 function setJobStatus(jobId: string, status: any) {
     try {
@@ -419,6 +455,13 @@ app.post("/api/render", async (req, res) => {
         res.status(400).json({ error: "filenameが必要です" });
         return;
     }
+
+    // 同時レンダリング数チェック
+    if (activeRenders >= MAX_CONCURRENT_RENDERS) {
+        res.status(429).json({ error: `現在${activeRenders}件のレンダリングが実行中です。しばらくお待ちください。` });
+        return;
+    }
+    activeRenders++;
 
     const baseName = path.parse(filename).name;
     const jobId = `${baseName}_${Date.now()}`;
@@ -518,6 +561,7 @@ app.post("/api/render", async (req, res) => {
             });
 
             child.on("close", (code: number | null) => {
+                activeRenders--;
                 if (fs.existsSync(assPath)) {
                     try { fs.unlinkSync(assPath); } catch { }
                 }
@@ -538,11 +582,13 @@ app.post("/api/render", async (req, res) => {
             });
 
             child.on("error", (err: Error) => {
+                activeRenders--;
                 console.error(`❌ FFmpegエラー (job: ${jobId}):`, err.message);
                 setJobStatus(jobId, { status: "error", error: err.message });
             });
 
         } catch (error: any) {
+            activeRenders--;
             console.error(`❌ レンダリング準備エラー (job: ${jobId}):`, error.message);
             setJobStatus(jobId, { status: "error", error: error.message });
         }
