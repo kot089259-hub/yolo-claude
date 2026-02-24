@@ -165,6 +165,39 @@ export function getVideoInfo(videoPath: string): { width: number; height: number
     return { width, height, duration, fps };
 }
 
+// ── 長いテキストを手動改行 (ASS \N) ──
+function wrapText(text: string, fontSize: number, videoWidth: number, marginLR: number): string {
+    // 利用可能な幅 (マージン除く)
+    const availableWidth = videoWidth - marginLR * 2;
+    // 1文字あたりの推定幅（CJK文字は全角 ≈ fontSize、英数字は半角 ≈ fontSize * 0.6）
+    const avgCharWidth = fontSize * 0.85; // CJK混在の平均
+    const charsPerLine = Math.max(4, Math.floor(availableWidth / avgCharWidth));
+
+    if (text.length <= charsPerLine) return text;
+
+    // 手動で改行を挿入
+    const lines: string[] = [];
+    let remaining = text;
+    while (remaining.length > charsPerLine) {
+        // 、。！？など自然な切れ目を探す
+        let breakAt = -1;
+        for (let i = charsPerLine; i >= Math.floor(charsPerLine * 0.6); i--) {
+            const ch = remaining[i];
+            if ('、。！？」』）】!?,. '.includes(ch)) {
+                breakAt = i + 1;
+                break;
+            }
+        }
+        if (breakAt === -1) breakAt = charsPerLine;
+
+        lines.push(remaining.slice(0, breakAt));
+        remaining = remaining.slice(breakAt);
+    }
+    if (remaining.length > 0) lines.push(remaining);
+
+    return lines.join('\\N');
+}
+
 // ── ASS字幕ファイル生成 ──
 export function generateASSFile(
     subtitles: SubtitleSegment[],
@@ -255,7 +288,7 @@ ${subtitles
                     overrides += `\\fad(300,0)`;
                 }
 
-                const text = overrides ? `{${overrides}}${sub.text}` : sub.text;
+                const text = overrides ? `{${overrides}}${wrapText(sub.text, segSize, videoWidth, marginLR)}` : wrapText(sub.text, segSize, videoWidth, marginLR);
                 return `Dialogue: 0,${toASSTime(sub.start)},${toASSTime(sub.end)},Default,,0,0,0,,${text}`;
             })
             .join("\n")}
