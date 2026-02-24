@@ -47,14 +47,17 @@ app.post("/api/upload", upload.single("video"), (req, res) => {
         return;
     }
 
+    // multerが保存した実際のファイル名を使用（安全なファイル名: upload_xxxxx.ext）
+    const savedFilename = req.file.filename;
+
     // current_config.json を更新して Remotion Studio が最新の動画を使うようにする
     const configPath = path.join(__dirname, "public", "current_config.json");
-    fs.writeFileSync(configPath, JSON.stringify({ videoFileName: req.file.originalname }, null, 2));
-    console.log(`📁 現在の動画を設定: ${req.file.originalname}`);
+    fs.writeFileSync(configPath, JSON.stringify({ videoFileName: savedFilename }, null, 2));
+    console.log(`📁 現在の動画を設定: ${savedFilename} (元: ${req.file.originalname})`);
 
     res.json({
-        filename: req.file.originalname,
-        path: `/public/${req.file.originalname}`,
+        filename: savedFilename,
+        path: `/public/${savedFilename}`,
         size: req.file.size,
     });
 });
