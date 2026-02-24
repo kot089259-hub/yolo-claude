@@ -479,8 +479,8 @@ app.post("/api/preview", async (req, res) => {
         const startTime = Math.max(0, (currentTime || 0));
         const endTime = Math.min(startTime + 5, videoInfo.duration);
 
-        // 1080p出力サイズ計算
-        const outHeight = 1080;
+        // プレビューは720p — ASS解像度もFFmpegスケールも統一
+        const outHeight = 720;
         const outWidth = Math.round(videoInfo.width * outHeight / videoInfo.height / 2) * 2;
 
         // ASS字幕生成
