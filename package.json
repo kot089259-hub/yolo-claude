@@ -32,6 +32,7 @@
   },
   "scripts": {
     "dev": "remotion studio",
+    "start": "tsx server.ts",
     "server": "tsx server.ts",
     "build": "remotion bundle",
     "upgrade": "remotion upgrade",

@@ -12,7 +12,7 @@ WORKDIR /app
 
 # Copy package files first for caching
 COPY package.json package-lock.json* ./
-RUN npm install
+RUN npm install --omit=dev
 
 # Copy all source files
 COPY . .
