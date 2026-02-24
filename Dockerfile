@@ -17,6 +17,11 @@ RUN npm install
 # Copy all source files
 COPY . .
 
+# カスタムフォントをシステムにインストール
+RUN mkdir -p /usr/share/fonts/custom && \
+    cp -r fonts/*.ttf /usr/share/fonts/custom/ 2>/dev/null || true && \
+    fc-cache -f -v
+
 # Create necessary directories
 RUN mkdir -p public output
 
