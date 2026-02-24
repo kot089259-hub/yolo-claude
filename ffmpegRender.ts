@@ -229,7 +229,7 @@ export function generateASSFile(
 
     // 縦動画対応: マージンを動画幅に応じて動的に計算
     const isVertical = videoHeight > videoWidth;
-    const marginLR = Math.round(videoWidth * 0.05); // 左右マージン: 幅の5%
+    const marginLR = Math.round(videoWidth * 0.08); // 左右マージン: 幅の8%
     const marginV = Math.round(videoHeight * 0.03);  // 上下マージン: 高さの3%
 
     // フォントサイズ（wrapTextが改行を処理するのでキャップ不要）
