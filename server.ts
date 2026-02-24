@@ -448,6 +448,82 @@ function getJobStatus(jobId: string): any | null {
     return null;
 }
 
+// ── プレビューレンダリング（5秒間の短いクリップ） ──
+app.post("/api/preview", async (req, res) => {
+    const { filename, currentTime, subtitles, subtitleStyle, editSettings } = req.body;
+    if (!filename) {
+        res.status(400).json({ error: "filenameが必要です" });
+        return;
+    }
+
+    const videoPath = path.join(__dirname, "public", filename);
+    if (!fs.existsSync(videoPath)) {
+        res.status(404).json({ error: "動画ファイルが見つかりません" });
+        return;
+    }
+
+    try {
+        const { generateASSFile, getVideoInfo } = await import("./ffmpegRender");
+        const videoInfo = getVideoInfo(videoPath);
+
+        // プレビュー範囲: currentTimeから5秒間
+        const startTime = Math.max(0, (currentTime || 0));
+        const endTime = Math.min(startTime + 5, videoInfo.duration);
+
+        // 1080p出力サイズ計算
+        const outHeight = 1080;
+        const outWidth = Math.round(videoInfo.width * outHeight / videoInfo.height / 2) * 2;
+
+        // ASS字幕生成
+        const textOverlays = editSettings?.textOverlays || [];
+        const subs = subtitles || [];
+        const hasSubtitles = subs.length > 0 || textOverlays.length > 0;
+        const previewId = `preview_${Date.now()}`;
+        const previewPath = path.join(__dirname, "output", `${previewId}.mp4`);
+        let assPath = "";
+        let assFilter = "";
+
+        if (hasSubtitles) {
+            assPath = previewPath.replace(/\.mp4$/, ".ass");
+            const assContent = generateASSFile(subs, subtitleStyle || {}, textOverlays, outWidth, outHeight);
+            fs.writeFileSync(assPath, assContent, "utf-8");
+            const escapedPath = assPath.replace(/\\/g, "/").replace(/:/g, "\\:");
+            assFilter = `,ass='${escapedPath}'`;
+        }
+
+        // 高速プレビューレンダリング（ultrafast + 低品質）
+        const command = [
+            "ffmpeg -y",
+            `-ss ${startTime}`,
+            `-to ${endTime}`,
+            `-i "${videoPath}"`,
+            `-vf "scale=-2:1080${assFilter}"`,
+            "-c:v libx264 -preset ultrafast -crf 30",
+            "-c:a aac -b:a 96k",
+            "-movflags +faststart",
+            `"${previewPath}"`,
+        ].join(" ");
+
+        console.log(`👁️ プレビュー生成: ${startTime.toFixed(1)}s〜${endTime.toFixed(1)}s`);
+        execSync(command, { timeout: 30000 });
+
+        // ASSファイル削除
+        if (assPath && fs.existsSync(assPath)) {
+            try { fs.unlinkSync(assPath); } catch { }
+        }
+
+        // プレビュー動画を返す
+        res.sendFile(previewPath, () => {
+            // 送信後に削除
+            try { fs.unlinkSync(previewPath); } catch { }
+        });
+
+    } catch (error: any) {
+        console.error("❌ プレビューエラー:", error.message);
+        res.status(500).json({ error: "プレビュー生成に失敗しました" });
+    }
+});
+
 // MP4レンダリングAPI（非同期 — FFmpegをバックグラウンドで実行）
 app.post("/api/render", async (req, res) => {
     const { filename } = req.body;

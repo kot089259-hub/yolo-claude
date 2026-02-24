@@ -2243,9 +2243,11 @@
           <div class="export-section">
             <div class="export-section-title">🎬 MP4レンダリング</div>
             <div class="export-row">
+              <button class="export-btn" id="previewBtn" onclick="startPreview()"
+                style="background:linear-gradient(135deg,#06b6d4,#3b82f6);">👁️ プレビュー (5秒)</button>
               <button class="export-btn render" id="renderBtn" onclick="startRender()">📦 動画を書き出し</button>
             </div>
-            <div class="edit-hint">※ 現在の設定を全て反映してMP4を生成します（数分かかる場合があります）</div>
+            <div class="edit-hint">※ プレビュー: 現在位置から5秒間を高速レンダリング ／ 書き出し: 全体を高品質レンダリング</div>
             <div class="render-status" id="renderStatus"></div>
             <div id="renderResult"></div>
           </div>
@@ -3145,6 +3147,48 @@
         const sel = document.querySelector(`#telopStyle${i} select`);
         if (sel) sel.value = t.fontFamily;
       });
+    }
+
+    // Export: Preview (5秒間の実レンダリングプレビュー)
+    async function startPreview() {
+      const btn = document.getElementById('previewBtn');
+      const status = document.getElementById('renderStatus');
+      const video = document.getElementById('previewVideo');
+      if (!currentFilename) { alert('先に動画をアップロードしてください'); return; }
+
+      btn.disabled = true;
+      btn.textContent = '⏳ プレビュー生成中...';
+      status.textContent = '🔄 サーバーでプレビューをレンダリング中...';
+
+      try {
+        const resp = await fetch(`${SERVER}/api/preview`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            filename: currentFilename,
+            currentTime: video ? video.currentTime : 0,
+            subtitles: currentSubtitles,
+            subtitleStyle: currentStyle,
+            editSettings
+          })
+        });
+
+        if (!resp.ok) {
+          const err = await resp.json();
+          throw new Error(err.error || 'プレビュー生成に失敗');
+        }
+
+        const blob = await resp.blob();
+        const url = URL.createObjectURL(blob);
+        video.src = url;
+        video.play();
+        status.textContent = '✅ プレビュー生成完了！（実際のレンダリング結果と同じ見た目です）';
+      } catch (e) {
+        status.textContent = `❌ プレビューエラー: ${e.message}`;
+      } finally {
+        btn.disabled = false;
+        btn.textContent = '👁️ プレビュー (5秒)';
+      }
     }
 
     // Export: MP4 Render
