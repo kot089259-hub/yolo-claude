@@ -1916,7 +1916,7 @@
             </div>
             <div class="style-field">
               <label>サイズ (px)</label>
-              <input type="number" id="styleFontSize" value="42" min="16" max="120" onchange="updateStyle()">
+              <input type="number" id="styleFontSize" value="42" min="16" max="400" onchange="updateStyle()">
             </div>
             <div class="style-field">
               <label>太字</label>
@@ -2619,7 +2619,7 @@
             </div>
             <div class="seg-field">
               <label>サイズ</label>
-              <input type="number" min="16" max="120" value="${sub.fontSize ?? ''}" onchange="updateSubtitle(${i}, 'fontSize', this.value)" placeholder="-">
+              <input type="number" min="16" max="400" value="${sub.fontSize ?? ''}" onchange="updateSubtitle(${i}, 'fontSize', this.value)" placeholder="-">
             </div>
             <div class="seg-field">
               <label>文字色</label>
