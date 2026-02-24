@@ -19,7 +19,8 @@ COPY . .
 
 # カスタムフォントをシステムにインストール
 RUN mkdir -p /usr/share/fonts/custom && \
-    cp -r fonts/*.ttf /usr/share/fonts/custom/ 2>/dev/null || true && \
+    cp -r fonts/*.ttf /usr/share/fonts/custom/ 2>/dev/null; \
+    cp -r fonts/*.otf /usr/share/fonts/custom/ 2>/dev/null; \
     fc-cache -f -v
 
 # Create necessary directories
