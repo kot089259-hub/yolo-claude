@@ -429,6 +429,7 @@ console.log("🧹 自動クリーンアップ有効 (1時間以上前のファ�
 // ── 同時レンダリング制限 ──
 const MAX_CONCURRENT_RENDERS = 2;
 let activeRenders = 0;
+let previewInProgress = false;
 
 // ── レンダリングジョブ管理（ディスク永続化 — public/ に保存） ──
 function setJobStatus(jobId: string, status: any) {
@@ -456,8 +457,16 @@ app.post("/api/preview", async (req, res) => {
         return;
     }
 
+    // 同時プレビュー制限（1件のみ）
+    if (previewInProgress) {
+        res.status(429).json({ error: "別のプレビューが処理中です。少々お待ちください。" });
+        return;
+    }
+    previewInProgress = true;
+
     const videoPath = path.join(__dirname, "public", filename);
     if (!fs.existsSync(videoPath)) {
+        previewInProgress = false;
         res.status(404).json({ error: "動画ファイルが見つかりません" });
         return;
     }
@@ -491,34 +500,45 @@ app.post("/api/preview", async (req, res) => {
             assFilter = `,ass='${escapedPath}'`;
         }
 
-        // 高速プレビューレンダリング（ultrafast + 低品質）
+        // プレビューは720pで高速レンダリング（メモリ節約）
         const command = [
-            "ffmpeg -y",
+            "ffmpeg -y -threads 1",
             `-ss ${startTime}`,
             `-to ${endTime}`,
             `-i "${videoPath}"`,
-            `-vf "scale=-2:1080${assFilter}"`,
-            "-c:v libx264 -preset ultrafast -crf 30",
-            "-c:a aac -b:a 96k",
+            `-vf "scale=-2:720${assFilter}"`,
+            "-c:v libx264 -preset ultrafast -crf 32",
+            "-c:a aac -b:a 64k",
             "-movflags +faststart",
             `"${previewPath}"`,
         ].join(" ");
 
         console.log(`👁️ プレビュー生成: ${startTime.toFixed(1)}s〜${endTime.toFixed(1)}s`);
-        execSync(command, { timeout: 30000 });
 
-        // ASSファイル削除
-        if (assPath && fs.existsSync(assPath)) {
-            try { fs.unlinkSync(assPath); } catch { }
-        }
+        // 非同期で実行（イベントループをブロックしない）
+        const { exec } = await import("child_process");
+        exec(command, { timeout: 30000 }, (error) => {
+            previewInProgress = false;
 
-        // プレビュー動画を返す
-        res.sendFile(previewPath, () => {
-            // 送信後に削除
-            try { fs.unlinkSync(previewPath); } catch { }
+            // ASSファイル削除
+            if (assPath && fs.existsSync(assPath)) {
+                try { fs.unlinkSync(assPath); } catch { }
+            }
+
+            if (error) {
+                console.error("❌ プレビューエラー:", error.message);
+                res.status(500).json({ error: "プレビュー生成に失敗しました" });
+                return;
+            }
+
+            // プレビュー動画を返す
+            res.sendFile(previewPath, () => {
+                try { fs.unlinkSync(previewPath); } catch { }
+            });
         });
 
     } catch (error: any) {
+        previewInProgress = false;
         console.error("❌ プレビューエラー:", error.message);
         res.status(500).json({ error: "プレビュー生成に失敗しました" });
     }
