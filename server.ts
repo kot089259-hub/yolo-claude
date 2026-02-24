@@ -28,6 +28,69 @@ if (!fs.existsSync(outputDir)) fs.mkdirSync(outputDir, { recursive: true });
 app.use(cors());
 app.use(express.json({ limit: "50mb" }));
 
+// ── タイムスタンプ付きログ ──
+const log = (emoji: string, ...args: any[]) => {
+    const ts = new Date().toISOString().slice(11, 19);
+    console.log(`[${ts}] ${emoji}`, ...args);
+};
+
+// ── レートリミット（IP単位: 60リクエスト/分） ──
+const rateLimitMap = new Map<string, number[]>();
+const RATE_LIMIT = 60;
+const RATE_WINDOW_MS = 60 * 1000;
+
+app.use((req, res, next) => {
+    const ip = req.ip || req.socket.remoteAddress || "unknown";
+    const now = Date.now();
+    const requests = (rateLimitMap.get(ip) || []).filter(t => now - t < RATE_WINDOW_MS);
+    if (requests.length >= RATE_LIMIT) {
+        res.status(429).json({ error: "リクエストが多すぎます。1分後にお試しください。" });
+        return;
+    }
+    requests.push(now);
+    rateLimitMap.set(ip, requests);
+    next();
+});
+
+// ── リクエストタイムアウト（5分） ──
+app.use((_req, res, next) => {
+    res.setTimeout(5 * 60 * 1000, () => {
+        res.status(408).json({ error: "リクエストがタイムアウトしました" });
+    });
+    next();
+});
+
+// ── ファイル名サニタイズ関数（パス走査防止） ──
+function sanitizeFilename(filename: string): string {
+    // パスセパレータを除去、先頭ドットも除去
+    return path.basename(filename).replace(/^\.+/, "").replace(/[<>:"|?*]/g, "_");
+}
+
+// ── ディスク容量チェック ──
+function checkDiskSpace(): { available: boolean; freeMB: number } {
+    try {
+        const result = spawnSync("df", ["-m", __dirname], { encoding: "utf-8" });
+        const lines = result.stdout.split("\n");
+        if (lines.length >= 2) {
+            const parts = lines[1].split(/\s+/);
+            const freeMB = parseInt(parts[3], 10);
+            return { available: freeMB > 100, freeMB }; // 100MB以上で利用可能
+        }
+    } catch { }
+    return { available: true, freeMB: -1 }; // チェック失敗時は許可
+}
+
+// ── メモリ監視（400MB超過でクリーンアップ強制実行） ──
+const MEMORY_THRESHOLD_MB = 400;
+setInterval(() => {
+    const rss = process.memoryUsage().rss / 1024 / 1024;
+    if (rss > MEMORY_THRESHOLD_MB) {
+        log("⚠️", `メモリ使用量 ${Math.round(rss)}MB > ${MEMORY_THRESHOLD_MB}MB — クリーンアップ実行`);
+        if (typeof cleanupOldFiles === "function") cleanupOldFiles();
+        if (global.gc) global.gc(); // --expose-gc フラグ有効時のみ
+    }
+}, 30 * 1000); // 30秒ごと
+
 // ── 同時レンダリング制限（早期宣言 — ヘルスチェックで参照） ──
 const MAX_CONCURRENT_RENDERS = 2;
 let activeRenders = 0;
@@ -156,11 +219,12 @@ function whisperTranscribe(filePath: string, apiKey: string): { text: string; se
 
 // 音声文字起こしAPI（OpenAI Whisper API）
 app.post("/api/transcribe", async (req, res) => {
-    const { filename } = req.body;
-    if (!filename) {
+    const rawFilename = req.body.filename;
+    if (!rawFilename) {
         res.status(400).json({ error: "filenameが必要です" });
         return;
     }
+    const filename = sanitizeFilename(rawFilename);
 
     if (!process.env.OPENAI_API_KEY) {
         console.log("⚠️ OPENAI_API_KEYが未設定のため、文字起こしをスキップします（プロジェクト読込で字幕を復元できます）");
@@ -580,9 +644,17 @@ app.post("/api/preview", async (req, res) => {
 
 // MP4レンダリングAPI（非同期 — FFmpegをバックグラウンドで実行）
 app.post("/api/render", async (req, res) => {
-    const { filename } = req.body;
-    if (!filename) {
+    const rawFilename = req.body.filename;
+    if (!rawFilename) {
         res.status(400).json({ error: "filenameが必要です" });
+        return;
+    }
+    const filename = sanitizeFilename(rawFilename);
+
+    // ディスク容量チェック
+    const disk = checkDiskSpace();
+    if (!disk.available) {
+        res.status(507).json({ error: `ディスク容量不足です (残り${disk.freeMB}MB)。古いファイルが削除されるのをお待ちください。` });
         return;
     }
 
