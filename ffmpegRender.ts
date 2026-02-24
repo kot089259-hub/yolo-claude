@@ -170,7 +170,7 @@ function wrapText(text: string, fontSize: number, videoWidth: number, marginLR: 
     // 利用可能な幅 (マージン除く)
     const availableWidth = videoWidth - marginLR * 2;
     // 1文字あたりの推定幅（CJK文字は全角 ≈ fontSize、英数字は半角 ≈ fontSize * 0.6）
-    const avgCharWidth = fontSize * 0.55; // CJK混在の平均（ASSレンダラーの実測に近い値）
+    const avgCharWidth = fontSize * 0.65; // CJK混在の平均（余裕を持たせて端が切れないように）
     const charsPerLine = Math.max(4, Math.floor(availableWidth / avgCharWidth));
 
     if (text.length <= charsPerLine) return text;
