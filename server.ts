@@ -15,6 +15,11 @@ const PORT = process.env.PORT || 3001;
 app.use(cors());
 app.use(express.json());
 
+// ヘルスチェック（Render用）
+app.get("/health", (_req, res) => {
+    res.json({ status: "ok", version: "2026-02-24-v2" });
+});
+
 // upload.htmlをルートで配信
 app.get("/", (_req, res) => {
     res.sendFile(path.join(__dirname, "upload.html"));

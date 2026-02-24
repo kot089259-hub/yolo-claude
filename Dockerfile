@@ -24,4 +24,4 @@ RUN mkdir -p public output
 EXPOSE 10000
 
 # Start the server
-CMD ["npx", "tsx", "server.ts"]
+CMD ["node_modules/.bin/tsx", "server.ts"]
