@@ -12,12 +12,41 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-app.use(cors());
-app.use(express.json());
+// ── クラッシュ防止: 未処理エラーのキャッチ ──
+process.on("uncaughtException", (err) => {
+    console.error("🔥 未処理の例外:", err.message);
+    console.error(err.stack);
+});
+process.on("unhandledRejection", (reason) => {
+    console.error("🔥 未処理のPromise拒否:", reason);
+});
 
-// ヘルスチェック（Render用）
+// ── 出力ディレクトリの確保 ──
+const outputDir = path.join(path.dirname(fileURLToPath(import.meta.url)), "output");
+if (!fs.existsSync(outputDir)) fs.mkdirSync(outputDir, { recursive: true });
+
+app.use(cors());
+app.use(express.json({ limit: "50mb" }));
+
+// ── 同時レンダリング制限（早期宣言 — ヘルスチェックで参照） ──
+const MAX_CONCURRENT_RENDERS = 2;
+let activeRenders = 0;
+let previewInProgress = false;
+
+// ── ヘルスチェック（Render用 — 詳細情報付き）──
 app.get("/health", (_req, res) => {
-    res.json({ status: "ok", version: "2026-02-24-v2" });
+    const mem = process.memoryUsage();
+    res.json({
+        status: "ok",
+        version: "2026-02-24-v3",
+        uptime: Math.round(process.uptime()),
+        memory: {
+            heapUsedMB: Math.round(mem.heapUsed / 1024 / 1024),
+            rssMB: Math.round(mem.rss / 1024 / 1024),
+        },
+        activeRenders,
+        previewInProgress,
+    });
 });
 
 // upload.htmlをルートで配信
@@ -67,54 +96,62 @@ app.post("/api/upload", upload.single("video"), (req, res) => {
     });
 });
 
-// Whisper API呼び出しヘルパー（curlで直接呼ぶ — spawnSyncで安全に実行）
+// Whisper API呼び出しヘルパー（リトライ付き）
+const WHISPER_MAX_RETRIES = 3;
 function whisperTranscribe(filePath: string, apiKey: string): { text: string; segments: any[] } {
     const fileSize = fs.statSync(filePath).size;
-    console.log(`📤 Whisper APIに送信中... (${(fileSize / 1024 / 1024).toFixed(1)}MB)`);
+    let lastError = "";
 
-    const result = spawnSync("curl", [
-        "-s",
-        "--connect-timeout", "60",
-        "--max-time", "600",
-        "-X", "POST",
-        "https://api.openai.com/v1/audio/transcriptions",
-        "-H", `Authorization: Bearer ${apiKey}`,
-        "-F", `file=@${filePath}`,
-        "-F", "model=whisper-1",
-        "-F", "language=ja",
-        "-F", "response_format=verbose_json",
-        "-F", "prompt=日本語の音声を正確に文字起こししてください。絵文字や特殊記号は使わず、句読点を含む通常の日本語テキストのみを出力してください。"
-    ], { encoding: "utf-8", maxBuffer: 50 * 1024 * 1024, timeout: 660000 });
+    for (let attempt = 1; attempt <= WHISPER_MAX_RETRIES; attempt++) {
+        console.log(`📤 Whisper API送信... (${(fileSize / 1024 / 1024).toFixed(1)}MB, 試行${attempt}/${WHISPER_MAX_RETRIES})`);
 
-    // プロセスエラー（curl自体が起動できない等）
-    if (result.error) {
-        console.error("❌ curlプロセスエラー:", result.error.message);
-        throw new Error(`curlの実行に失敗: ${result.error.message}`);
+        try {
+            const result = spawnSync("curl", [
+                "-s",
+                "--connect-timeout", "60",
+                "--max-time", "600",
+                "-X", "POST",
+                "https://api.openai.com/v1/audio/transcriptions",
+                "-H", `Authorization: Bearer ${apiKey}`,
+                "-F", `file=@${filePath}`,
+                "-F", "model=whisper-1",
+                "-F", "language=ja",
+                "-F", "response_format=verbose_json",
+                "-F", "prompt=日本語の音声を正確に文字起こししてください。絵文字や特殊記号は使わず、句読点を含む通常の日本語テキストのみを出力してください。"
+            ], { encoding: "utf-8", maxBuffer: 50 * 1024 * 1024, timeout: 660000 });
+
+            if (result.error) {
+                throw new Error(`curlの実行に失敗: ${result.error.message}`);
+            }
+            if (result.status !== 0) {
+                throw new Error(`curl失敗 (終了コード${result.status}): ${result.stderr || "接続エラー"}`);
+            }
+
+            const stdout = result.stdout || "";
+            if (!stdout.trim()) {
+                throw new Error("APIからの応答が空です");
+            }
+
+            console.log("📥 API応答受信 (先頭100文字):", stdout.substring(0, 100));
+
+            const data = JSON.parse(stdout);
+            if (data.error) {
+                throw new Error(`OpenAI APIエラー: ${data.error.message || JSON.stringify(data.error)}`);
+            }
+            return {
+                text: data.text || "",
+                segments: data.segments || [],
+            };
+        } catch (err: any) {
+            lastError = err.message;
+            console.error(`⚠️ Whisper API 試行${attempt}失敗:`, lastError);
+            if (attempt < WHISPER_MAX_RETRIES) {
+                console.log(`🔄 ${3}秒後にリトライ...`);
+                spawnSync("sleep", ["3"]);
+            }
+        }
     }
-
-    // curl終了コードチェック
-    if (result.status !== 0) {
-        console.error(`❌ curl終了コード: ${result.status}`);
-        console.error("stderr:", result.stderr || "(空)");
-        console.error("stdout:", result.stdout?.substring(0, 200) || "(空)");
-        throw new Error(`curl失敗 (終了コード${result.status}): ${result.stderr || "接続エラーまたはタイムアウト"}`);
-    }
-
-    const stdout = result.stdout || "";
-    if (!stdout.trim()) {
-        throw new Error("APIからの応答が空です");
-    }
-
-    console.log("📥 API応答受信 (先頭100文字):", stdout.substring(0, 100));
-
-    const data = JSON.parse(stdout);
-    if (data.error) {
-        throw new Error(`OpenAI APIエラー: ${data.error.message || JSON.stringify(data.error)}`);
-    }
-    return {
-        text: data.text || "",
-        segments: data.segments || [],
-    };
+    throw new Error(`Whisper API ${WHISPER_MAX_RETRIES}回失敗: ${lastError}`);
 }
 
 // 音声文字起こしAPI（OpenAI Whisper API）
@@ -426,10 +463,7 @@ function cleanupOldFiles() {
 setInterval(cleanupOldFiles, CLEANUP_INTERVAL_MS);
 console.log("🧹 自動クリーンアップ有効 (1時間以上前のファイルを10分ごとに削除)");
 
-// ── 同時レンダリング制限 ──
-const MAX_CONCURRENT_RENDERS = 2;
-let activeRenders = 0;
-let previewInProgress = false;
+
 
 // ── レンダリングジョブ管理（ディスク永続化 — public/ に保存） ──
 function setJobStatus(jobId: string, status: any) {
@@ -771,6 +805,23 @@ app.post("/api/thumbnail", async (req, res) => {
     }
 });
 
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
     console.log(`🚀 サーバー起動: http://localhost:${PORT}`);
 });
+
+// ── グレースフルシャットダウン ──
+function gracefulShutdown(signal: string) {
+    console.log(`\n⚡ ${signal}受信 — グレースフルシャットダウン開始...`);
+    server.close(() => {
+        console.log("✅ HTTP接続を全てクローズ");
+        process.exit(0);
+    });
+    // 10秒で強制終了
+    setTimeout(() => {
+        console.error("⚠️ タイムアウト — 強制終了");
+        process.exit(1);
+    }, 10000);
+}
+
+process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
+process.on("SIGINT", () => gracefulShutdown("SIGINT"));
