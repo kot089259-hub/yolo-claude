@@ -170,7 +170,7 @@ function wrapText(text: string, fontSize: number, videoWidth: number, marginLR: 
     // 利用可能な幅 (マージン除く)
     const availableWidth = videoWidth - marginLR * 2;
     // 1文字あたりの推定幅（CJK文字は全角 ≈ fontSize、英数字は半角 ≈ fontSize * 0.6）
-    const avgCharWidth = fontSize * 0.65; // CJK混在の平均（余裕を持たせて端が切れないように）
+    const avgCharWidth = fontSize * 0.8; // CJK文字の実際の描画幅に近い値
     const charsPerLine = Math.max(4, Math.floor(availableWidth / avgCharWidth));
 
     if (text.length <= charsPerLine) return text;
@@ -195,7 +195,7 @@ function wrapText(text: string, fontSize: number, videoWidth: number, marginLR: 
     }
     if (remaining.length > 0) lines.push(remaining);
 
-    return lines.join('\\N');
+    return lines.join(String.raw`\N`);
 }
 
 // ── ASS字幕ファイル生成 ──
