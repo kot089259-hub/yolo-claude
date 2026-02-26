@@ -577,9 +577,19 @@ app.post("/api/preview", async (req, res) => {
         const startTime = Math.max(0, (currentTime || 0));
         const endTime = Math.min(startTime + 5, videoInfo.duration);
 
-        // プレビューは720p — ASS解像度もFFmpegスケールも統一
-        const outHeight = 720;
-        const outWidth = Math.round(videoInfo.width * outHeight / videoInfo.height / 2) * 2;
+        // プレビューは720p — 縦動画対応でスケール軸を動的に選択
+        const isVertical = videoInfo.height > videoInfo.width;
+        let outWidth: number, outHeight: number, scaleFilter: string;
+        if (isVertical) {
+            outWidth = Math.min(720, videoInfo.width);
+            outWidth = Math.round(outWidth / 2) * 2;
+            outHeight = Math.round(videoInfo.height * outWidth / videoInfo.width / 2) * 2;
+            scaleFilter = `scale=${outWidth}:-2`;
+        } else {
+            outHeight = 720;
+            outWidth = Math.round(videoInfo.width * outHeight / videoInfo.height / 2) * 2;
+            scaleFilter = `scale=-2:720`;
+        }
 
         // ASS字幕生成
         const textOverlays = editSettings?.textOverlays || [];
@@ -604,7 +614,7 @@ app.post("/api/preview", async (req, res) => {
             `-ss ${startTime}`,
             `-to ${endTime}`,
             `-i "${videoPath}"`,
-            `-vf "scale=-2:720${assFilter}"`,
+            `-vf "${scaleFilter}${assFilter}"`,
             "-c:v libx264 -preset ultrafast -crf 32",
             "-c:a aac -b:a 64k",
             "-movflags +faststart",
@@ -705,9 +715,21 @@ app.post("/api/render", async (req, res) => {
             console.log(`📐 動画情報: ${videoInfo.width}x${videoInfo.height}, ${videoInfo.duration.toFixed(1)}秒`);
 
             // ASS字幕生成（字幕がある場合のみ）
-            // ★ 1080p出力に合わせたASS解像度を計算（文字が小さくならないように）
-            const outHeight = 1080;
-            const outWidth = Math.round(videoInfo.width * outHeight / videoInfo.height / 2) * 2; // 偶数に丸め
+            // ★ 1080p出力 — 縦動画対応でスケール軸を動的に選択
+            const isVertical = videoInfo.height > videoInfo.width;
+            let outWidth: number, outHeight: number, scaleFilter: string;
+            if (isVertical) {
+                outWidth = Math.min(1080, videoInfo.width);
+                outWidth = Math.round(outWidth / 2) * 2;
+                outHeight = Math.round(videoInfo.height * outWidth / videoInfo.width / 2) * 2;
+                scaleFilter = `scale=${outWidth}:-2`;
+            } else {
+                outHeight = 1080;
+                outWidth = Math.round(videoInfo.width * outHeight / videoInfo.height / 2) * 2;
+                scaleFilter = `scale=-2:1080`;
+            }
+
+            console.log(`📐 レンダリング: ${videoInfo.width}x${videoInfo.height} → ${outWidth}x${outHeight} (${isVertical ? '縦' : '横'})`);
             const textOverlays = editSettings.textOverlays || [];
             const hasSubtitles = subtitles.length > 0 || textOverlays.length > 0;
             let assPath = "";
@@ -741,7 +763,7 @@ app.post("/api/render", async (req, res) => {
                 "ffmpeg -y",
                 ...trimArgs,
                 `-i "${videoPath}"`,
-                `-vf "scale=-2:1080${assFilter}"`,
+                `-vf "${scaleFilter}${assFilter}"`,
                 "-c:v libx264 -preset ultrafast -crf 20",
                 "-c:a aac -b:a 128k",
                 "-movflags +faststart",

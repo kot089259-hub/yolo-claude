@@ -143,7 +143,7 @@ function toASSTime(seconds: number): string {
     return `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}.${String(cs).padStart(2, "0")}`;
 }
 
-// ── 動画情報の取得 ──
+// ── 動画情報の取得（回転フラグ対応） ──
 export function getVideoInfo(videoPath: string): { width: number; height: number; duration: number; fps: number } {
     const info = execSync(
         `ffprobe -v error -select_streams v:0 -show_entries stream=width,height,r_frame_rate,duration -show_entries format=duration -of json "${videoPath}"`,
@@ -151,8 +151,31 @@ export function getVideoInfo(videoPath: string): { width: number; height: number
     );
     const data = JSON.parse(info);
     const stream = data.streams?.[0] || {};
-    const width = stream.width || 1920;
-    const height = stream.height || 1080;
+    let width = stream.width || 1920;
+    let height = stream.height || 1080;
+
+    // 回転フラグを検出（スマホ縦動画は90°/270°回転で保存される）
+    try {
+        const rotInfo = execSync(
+            `ffprobe -v error -select_streams v:0 -show_streams -of json "${videoPath}"`,
+            { encoding: "utf-8" }
+        );
+        const rotStream = JSON.parse(rotInfo).streams?.[0] || {};
+        let rotation = 0;
+        if (rotStream.tags?.rotate) {
+            rotation = Math.abs(parseInt(rotStream.tags.rotate) || 0);
+        }
+        if (rotation === 0 && rotStream.side_data_list) {
+            const sd = rotStream.side_data_list.find((d: any) => d.rotation !== undefined);
+            if (sd) rotation = Math.abs(parseInt(sd.rotation) || 0);
+        }
+        if (rotation === 90 || rotation === 270) {
+            [width, height] = [height, width];
+            console.log(`🔄 回転検出: ${rotation}° → 実効解像度 ${width}x${height}`);
+        }
+    } catch {
+        // 回転検出失敗時はそのまま（横動画として扱う）
+    }
 
     // fps計算
     const fpsStr = stream.r_frame_rate || "30/1";
@@ -232,8 +255,13 @@ export function generateASSFile(
     const marginLR = Math.round(videoWidth * 0.08); // 左右マージン: 幅の8%
     const marginV = Math.round(videoHeight * 0.03);  // 上下マージン: 高さの3%
 
-    // フォントサイズ（wrapTextが改行を処理するのでキャップ不要）
-    const effectiveFontSize = s.fontSize;
+    // フォントサイズ — 縦動画ではビデオ幅に応じてスケーリング
+    let effectiveFontSize = s.fontSize;
+    let fontScale = 1;
+    if (isVertical) {
+        fontScale = Math.min(1, (videoWidth / 1920) * 1.5);
+        effectiveFontSize = Math.round(s.fontSize * fontScale);
+    }
 
     const assContent = `[Script Info]
 Title: Video Subtitles
@@ -252,7 +280,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 ${subtitles
             .map((sub) => {
                 const segFont = sub.fontFamily || s.fontFamily;
-                const segSize = sub.fontSize || s.fontSize;
+                const segSize = sub.fontSize ? Math.round(sub.fontSize * fontScale) : effectiveFontSize;
                 const segColor = sub.fontColor ? hexToASS(sub.fontColor) : hexToASS(s.fontColor);
                 const segBold = sub.bold !== undefined ? sub.bold : s.bold;
                 const segAnim = sub.animation || s.animation;
