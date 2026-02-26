@@ -2575,8 +2575,13 @@
     const uploadArea = document.getElementById("uploadArea");
     const fileInput = document.getElementById("fileInput");
 
+    // ページ全体でのドラッグ&ドロップを防止（ブラウザのファイル遷移を阻止）
+    document.addEventListener("dragover", (e) => { e.preventDefault(); });
+    document.addEventListener("drop", (e) => { e.preventDefault(); });
+
     uploadArea.addEventListener("dragover", (e) => {
       e.preventDefault();
+      e.stopPropagation();
       uploadArea.classList.add("dragover");
     });
 
@@ -2586,6 +2591,7 @@
 
     uploadArea.addEventListener("drop", (e) => {
       e.preventDefault();
+      e.stopPropagation();
       uploadArea.classList.remove("dragover");
       const file = e.dataTransfer.files[0];
       if (file && file.type.startsWith("video/")) {
