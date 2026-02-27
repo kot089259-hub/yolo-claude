@@ -2580,9 +2580,8 @@
               <button class="export-btn" id="previewBtn" onclick="startPreview()"
                 style="background:linear-gradient(135deg,#222222,#222222);">👁️ プレビュー (5秒)</button>
               <button class="export-btn render" id="renderBtn" onclick="startRender()">📦 動画を書き出し</button>
-              <button class="export-btn sub" onclick="startLocalRender()">💻 ローカルで書き出し</button>
             </div>
-            <div class="edit-hint">※ プレビュー: 現在位置から5秒間を高速レンダリング ／ 書き出し: 全体を高品質レンダリング ／ ローカル: FFmpegでレンダリング（要FFmpegインストール）</div>
+            <div class="edit-hint">※ プレビュー: 現在位置から5秒間 ／ 書き出し: ローカルFFmpegで全体をレンダリング</div>
             <div class="render-status" id="renderStatus"></div>
             <div id="renderResult"></div>
           </div>
@@ -4216,97 +4215,7 @@ ${subLines}
 ${telopLines}`;
     }
 
-    // ── ローカルレンダリング ──
-    function startLocalRender() {
-      const video = document.getElementById('previewVideo');
-      if (!video || !video.videoWidth) {
-        alert('動画が読み込まれていません');
-        return;
-      }
-      if (currentSubtitles.length === 0 && (editSettings.textOverlays || []).length === 0) {
-        alert('字幕またはテロップがありません');
-        return;
-      }
-
-      const vw = video.videoWidth;
-      const vh = video.videoHeight;
-      const assContent = generateASSContent(currentSubtitles, currentStyle, editSettings.textOverlays || [], vw, vh);
-
-      // trim設定
-      let trimOpts = '';
-      const trim = editSettings.trim || {};
-      if (trim.startTime > 0) trimOpts += ` -ss ${trim.startTime}`;
-      if (trim.endTime) trimOpts += ` -to ${trim.endTime}`;
-
-      const script = `#!/bin/bash
-set -euo pipefail
-
-# ============================================
-# ローカルレンダリングスクリプト (自動生成)
-# ============================================
-
-if [ $# -lt 1 ]; then
-  echo "使い方: $0 <動画ファイル>"
-  echo "例: $0 /path/to/video.mp4"
-  exit 1
-fi
-
-VIDEO="$1"
-
-if [ ! -f "$VIDEO" ]; then
-  echo "エラー: ファイルが見つかりません: $VIDEO"
-  exit 1
-fi
-
-if ! command -v ffmpeg &> /dev/null; then
-  echo "エラー: FFmpegがインストールされていません"
-  echo "  macOS: brew install ffmpeg"
-  echo "  Ubuntu: sudo apt install ffmpeg"
-  exit 1
-fi
-
-# ASS字幕ファイルを一時生成
-ASS_FILE="/tmp/subs_$$.ass"
-cat > "$ASS_FILE" << 'ASSEOF'
-${assContent}
-ASSEOF
-
-# 出力ファイル名
-DIR="$(dirname "$VIDEO")"
-BASE="$(basename "$VIDEO" | sed 's/\\.[^.]*$//')"
-OUTPUT="$DIR/\${BASE}_rendered.mp4"
-
-echo "🎬 レンダリング開始..."
-echo "  入力: $VIDEO"
-echo "  出力: $OUTPUT"
-
-ffmpeg -y${trimOpts} -i "$VIDEO" \\
-  -vf "scale=-2:'min(1080,ih)',ass='$ASS_FILE'" \\
-  -c:v libx264 -preset medium -crf 20 \\
-  -c:a aac -b:a 128k -movflags +faststart \\
-  "$OUTPUT"
-
-# 一時ファイル削除
-rm -f "$ASS_FILE"
-
-echo ""
-echo "✅ レンダリング完了: $OUTPUT"
-`;
-
-      const blob = new Blob([script], { type: 'application/x-sh' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      const baseName = currentFilename ? currentFilename.replace(/\.[^.]+$/, '') : 'video';
-      a.href = url;
-      a.download = `${baseName}_render.sh`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-      showToast();
-    }
-
-    // Export: MP4 Render
+    // Export: MP4 Render (ローカルFFmpeg)
     async function startRender() {
       const renderSlotIdx = activeSlotIndex;
       const btn = document.getElementById('renderBtn');
