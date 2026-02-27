@@ -2947,10 +2947,10 @@
       // ビデオプレビュー切り替え
       const previewVideo = document.getElementById('previewVideo');
       const videoPreview = document.getElementById('videoPreview');
-      if (slot.uploaded && slot.videoObjectURL) {
+      if (slot.videoObjectURL) {
         previewVideo.src = slot.videoObjectURL;
         videoPreview.style.display = 'block';
-      } else if (slot.uploaded && slot.filename) {
+      } else if (slot.filename) {
         previewVideo.src = `${SERVER}/public/${slot.filename}`;
         videoPreview.style.display = 'block';
       } else {
@@ -3505,6 +3505,16 @@
       slot.processing = true;
       slot.videoObjectURL = URL.createObjectURL(file);
       renderSlotList();
+
+      // アクティブスロットなら動画プレビューを即座に表示
+      if (activeSlotIndex === slotIndex) {
+        const previewVideo = document.getElementById('previewVideo');
+        const videoPreview = document.getElementById('videoPreview');
+        previewVideo.src = slot.videoObjectURL;
+        videoPreview.style.display = 'block';
+        document.getElementById("progressSection").classList.add("active");
+        document.getElementById("resultSection").classList.remove("active");
+      }
 
       try {
         // 圧縮（FFmpeg.wasmは1つずつ — compressVideoが内部でキュー管理）
