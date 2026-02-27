@@ -255,13 +255,10 @@ export function generateASSFile(
     const marginLR = Math.round(videoWidth * 0.08); // 左右マージン: 幅の8%
     const marginV = Math.round(videoHeight * 0.03);  // 上下マージン: 高さの3%
 
-    // フォントサイズ — 縦動画ではビデオ幅に応じてスケーリング
-    let effectiveFontSize = s.fontSize;
-    let fontScale = 1;
-    if (isVertical) {
-        fontScale = Math.min(1, (videoWidth / 1920) * 1.5);
-        effectiveFontSize = Math.round(s.fontSize * fontScale);
-    }
+    // フォントサイズ — PlayResX/PlayResYが出力解像度に設定されているため
+    // ASS内のフォントサイズはそのまま使用（ASSレンダラが自動スケーリング）
+    const effectiveFontSize = s.fontSize;
+    const fontScale = 1;
 
     const assContent = `[Script Info]
 Title: Video Subtitles
