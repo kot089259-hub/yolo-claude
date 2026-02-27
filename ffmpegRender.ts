@@ -189,20 +189,24 @@ export function getVideoInfo(videoPath: string): { width: number; height: number
 }
 
 // ── テキスト幅の推定（ピクセル単位） ──
-function estimateTextWidth(text: string, fontSize: number): number {
+function estimateTextWidth(text: string, fontSize: number, bold = false): number {
+    // Noto Sans CJK の実測値に基づく幅係数
+    // 全角文字: fontSizeの約0.9〜0.95倍（fontSizeは高さであり幅ではない）
+    // 太字: さらに約5%広い
+    const cjkRatio = bold ? 0.97 : 0.92;
+    const halfRatio = bold ? 0.55 : 0.50;
     let width = 0;
     for (const ch of text) {
         const code = ch.codePointAt(0) || 0;
-        // CJK統合漢字、ひらがな、カタカナ、全角記号 → 全角幅
         if (
-            (code >= 0x3000 && code <= 0x9FFF) ||  // CJK, ひらがな, カタカナ, 記号
-            (code >= 0xF900 && code <= 0xFAFF) ||  // CJK互換漢字
-            (code >= 0xFF01 && code <= 0xFF60) ||  // 全角英数記号
-            (code >= 0x20000 && code <= 0x2FA1F)   // CJK拡張
+            (code >= 0x3000 && code <= 0x9FFF) ||
+            (code >= 0xF900 && code <= 0xFAFF) ||
+            (code >= 0xFF01 && code <= 0xFF60) ||
+            (code >= 0x20000 && code <= 0x2FA1F)
         ) {
-            width += fontSize;
+            width += fontSize * cjkRatio;
         } else {
-            width += fontSize * 0.55; // 半角文字
+            width += fontSize * halfRatio;
         }
     }
     return width;
@@ -210,14 +214,14 @@ function estimateTextWidth(text: string, fontSize: number): number {
 
 // ── 長いテキストを手動改行 (ASS \N) ──
 // maxWidthPx: テキストが収まるべき最大幅（ピクセル）
-function wrapText(text: string, fontSize: number, maxWidthPx: number): string {
-    if (estimateTextWidth(text, fontSize) <= maxWidthPx) return text;
+function wrapText(text: string, fontSize: number, maxWidthPx: number, bold = false): string {
+    if (estimateTextWidth(text, fontSize, bold) <= maxWidthPx) return text;
 
     const lines: string[] = [];
     let remaining = text;
 
     while (remaining.length > 0) {
-        if (estimateTextWidth(remaining, fontSize) <= maxWidthPx) {
+        if (estimateTextWidth(remaining, fontSize, bold) <= maxWidthPx) {
             lines.push(remaining);
             break;
         }
@@ -225,7 +229,7 @@ function wrapText(text: string, fontSize: number, maxWidthPx: number): string {
         // 1文字ずつ追加して幅がmaxWidthPxを超える位置を探す
         let breakAt = remaining.length;
         for (let i = 1; i <= remaining.length; i++) {
-            if (estimateTextWidth(remaining.slice(0, i), fontSize) > maxWidthPx) {
+            if (estimateTextWidth(remaining.slice(0, i), fontSize, bold) > maxWidthPx) {
                 breakAt = i - 1;
                 break;
             }
@@ -343,7 +347,7 @@ ${subtitles
 
                 // マージン内に収まるよう手動改行 + WrapStyle:0をセーフティネットに
                 const maxTextWidth = videoWidth - marginLR * 2;
-                const wrapped = wrapText(sub.text, segSize, maxTextWidth);
+                const wrapped = wrapText(sub.text, segSize, maxTextWidth, segBold);
                 const text = overrides ? `{${overrides}}${wrapped}` : wrapped;
                 return `Dialogue: 0,${toASSTime(sub.start)},${toASSTime(sub.end)},Default,,0,0,0,,${text}`;
             })
