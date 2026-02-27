@@ -274,8 +274,8 @@ function scoreBreakPosition(text: string, pos: number): number {
 // ── 日本語テキストのスマート改行 (ASS \N 挿入) ──
 // isBold: 太字の場合は幅を約8%増しで計算
 function smartLineBreak(text: string, fontSize: number, maxWidthPx: number, isBold = false): string {
-    // 安全マージン: フォントレンダリング誤差を吸収（5%）+ 太字なら追加8%
-    const safetyFactor = isBold ? 0.87 : 0.95;
+    // 安全マージン: WrapStyle:0がセーフティネットなので最小限に
+    const safetyFactor = isBold ? 0.95 : 0.98;
     const safeMaxWidth = maxWidthPx * safetyFactor;
     const totalWidth = estimateTextWidth(text, fontSize);
 
@@ -379,7 +379,7 @@ export function generateASSFile(
 
     // 縦動画対応: マージンを動画幅に応じて動的に計算
     const isVertical = videoHeight > videoWidth;
-    const marginLR = Math.round(videoWidth * 0.01); // 左右マージン: 幅の1%
+    const marginLR = Math.round(videoWidth * 0.002); // 左右マージン: 幅の0.2%（ほぼゼロ）
     const marginV = Math.round(videoHeight * 0.03);  // 上下マージン: 高さの3%
 
     // フォントサイズ — PlayResX/PlayResYが出力解像度に設定されているため
