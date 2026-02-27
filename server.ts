@@ -9,6 +9,18 @@ import { fileURLToPath } from "url";
 
 const execAsync = promisify(exec);
 
+// "30000/1001" 形式のFPS文字列を安全にパース（eval()を使わない）
+function parseFraction(str: string): number {
+    const parts = str.split("/");
+    if (parts.length === 2) {
+        const num = parseFloat(parts[0]);
+        const den = parseFloat(parts[1]);
+        if (den !== 0) return num / den;
+    }
+    const n = parseFloat(str);
+    return isNaN(n) ? 30 : n;
+}
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -51,9 +63,23 @@ app.use((req, res, next) => {
         return;
     }
     requests.push(now);
-    rateLimitMap.set(ip, requests);
+    if (requests.length > 0) {
+        rateLimitMap.set(ip, requests);
+    } else {
+        rateLimitMap.delete(ip);
+    }
     next();
 });
+
+// 定期的に空エントリを掃除（5分毎）
+setInterval(() => {
+    const now = Date.now();
+    for (const [ip, times] of rateLimitMap) {
+        const valid = times.filter(t => now - t < RATE_WINDOW_MS);
+        if (valid.length === 0) rateLimitMap.delete(ip);
+        else rateLimitMap.set(ip, valid);
+    }
+}, 5 * 60 * 1000);
 
 // ── リクエストタイムアウト（5分） ──
 app.use((_req, res, next) => {
@@ -70,10 +96,10 @@ function sanitizeFilename(filename: string): string {
 }
 
 // ── ディスク容量チェック ──
-function checkDiskSpace(): { available: boolean; freeMB: number } {
+async function checkDiskSpace(): Promise<{ available: boolean; freeMB: number }> {
     try {
-        const result = spawnSync("df", ["-m", __dirname], { encoding: "utf-8" });
-        const lines = result.stdout.split("\n");
+        const { stdout } = await execAsync(`df -m "${__dirname}"`);
+        const lines = stdout.split("\n");
         if (lines.length >= 2) {
             const parts = lines[1].split(/\s+/);
             const freeMB = parseInt(parts[3], 10);
@@ -196,7 +222,7 @@ app.post("/api/upload", upload.single("video"), (req, res) => {
 
 // Whisper API呼び出しヘルパー（リトライ付き）
 const WHISPER_MAX_RETRIES = 3;
-function whisperTranscribe(filePath: string, apiKey: string): { text: string; segments: any[] } {
+async function whisperTranscribe(filePath: string, apiKey: string): Promise<{ text: string; segments: any[] }> {
     const fileSize = fs.statSync(filePath).size;
     let lastError = "";
 
@@ -245,7 +271,7 @@ function whisperTranscribe(filePath: string, apiKey: string): { text: string; se
             console.error(`⚠️ Whisper API 試行${attempt}失敗:`, lastError);
             if (attempt < WHISPER_MAX_RETRIES) {
                 console.log(`🔄 ${3}秒後にリトライ...`);
-                spawnSync("sleep", ["3"]);
+                await new Promise(r => setTimeout(r, 3000));
             }
         }
     }
@@ -486,7 +512,7 @@ app.post("/api/transcribe", async (req, res) => {
 });
 
 // 動画のメタデータを取得するAPI
-app.post("/api/video-info", (req, res) => {
+app.post("/api/video-info", async (req, res) => {
     const { filename } = req.body;
     if (!filename) {
         res.status(400).json({ error: "filenameが必要です" });
@@ -496,11 +522,10 @@ app.post("/api/video-info", (req, res) => {
     const videoPath = path.join(__dirname, "public", filename);
 
     try {
-        const result = execSync(
-            `ffprobe -v error -show_entries stream=width,height,duration,r_frame_rate -show_entries format=duration -of json "${videoPath}"`,
-            { encoding: "utf-8" }
+        const { stdout } = await execAsync(
+            `ffprobe -v error -show_entries stream=width,height,duration,r_frame_rate -show_entries format=duration -of json "${videoPath}"`
         );
-        const info = JSON.parse(result);
+        const info = JSON.parse(stdout);
         const videoStream = info.streams?.find(
             (s: any) => s.width && s.height
         );
@@ -510,7 +535,7 @@ app.post("/api/video-info", (req, res) => {
             height: videoStream?.height || 1080,
             duration: parseFloat(info.format?.duration || videoStream?.duration || "0"),
             fps: videoStream?.r_frame_rate
-                ? eval(videoStream.r_frame_rate)
+                ? parseFraction(videoStream.r_frame_rate)
                 : 30,
         });
     } catch (error: any) {
@@ -968,7 +993,7 @@ app.post("/api/render", async (req, res) => {
     const filename = sanitizeFilename(rawFilename);
 
     // ディスク容量チェック
-    const disk = checkDiskSpace();
+    const disk = await checkDiskSpace();
     if (!disk.available) {
         res.status(507).json({ error: `ディスク容量不足です (残り${disk.freeMB}MB)。古いファイルが削除されるのをお待ちください。` });
         return;
@@ -1000,7 +1025,7 @@ app.post("/api/render-batch", async (req, res) => {
         return;
     }
 
-    const disk = checkDiskSpace();
+    const disk = await checkDiskSpace();
     if (!disk.available) {
         res.status(507).json({ error: `ディスク容量不足です (残り${disk.freeMB}MB)` });
         return;
@@ -1110,10 +1135,8 @@ app.post("/api/thumbnail", async (req, res) => {
     const timestamp = time || 0;
 
     try {
-        const { execSync } = await import("child_process");
-        execSync(
-            `ffmpeg -y -ss ${timestamp} -i "${videoPath}" -vframes 1 -q:v 2 "${thumbPath}"`,
-            { stdio: "pipe" }
+        await execAsync(
+            `ffmpeg -y -ss ${timestamp} -i "${videoPath}" -vframes 1 -q:v 2 "${thumbPath}"`
         );
         console.log(`🖼️ サムネイル生成: ${thumbName} (${timestamp}秒)`);
         res.json({ success: true, path: `output/${thumbName}`, filename: thumbName });

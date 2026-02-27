@@ -2976,6 +2976,7 @@
         const displayName = slot.uploaded ? `動画${i + 1}` : '(空)';
         let badgeHTML = '';
         if (slot.processing) badgeHTML = `<span class="slot-badge rendering">${slot.processingLabel || '解析中'}</span>`;
+        else if (slot.processingLabel === 'エラー') badgeHTML = '<span class="slot-badge error">エラー</span>';
         else if (slot.renderStatus === 'queued') badgeHTML = '<span class="slot-badge queued">待機中</span>';
         else if (slot.renderStatus === 'rendering') badgeHTML = '<span class="slot-badge rendering">処理中</span>';
         else if (slot.renderStatus === 'done' && slot.renderResult) badgeHTML = `<a class="slot-badge done" href="${SERVER}/${slot.renderResult.path}" download="${slot.renderResult.filename}" onclick="event.stopPropagation()" title="クリックでダウンロード">⬇完了</a>`;
@@ -3505,6 +3506,10 @@
 
       const videoPreview = document.getElementById("videoPreview");
       const previewVideo = document.getElementById("previewVideo");
+      // 古いBlob URLを解放
+      if (videoSlots[targetSlot].videoObjectURL) {
+        URL.revokeObjectURL(videoSlots[targetSlot].videoObjectURL);
+      }
       const objectURL = URL.createObjectURL(file);
       previewVideo.src = objectURL;
       videoPreview.style.display = "block";
@@ -3598,6 +3603,8 @@
     async function processFileToSlot(file, slotIndex) {
       const slot = videoSlots[slotIndex];
       slot.processing = true;
+      // 古いBlob URLを解放
+      if (slot.videoObjectURL) URL.revokeObjectURL(slot.videoObjectURL);
       slot.videoObjectURL = URL.createObjectURL(file);
 
       // スロットのステップ状態を初期化
@@ -3677,13 +3684,17 @@
 
       } catch (error) {
         slot.processing = false;
-        slot.processingLabel = '';
+        slot.processingLabel = `エラー`;
         renderSlotList();
         console.error(`スロット${slotIndex + 1}の処理エラー:`, error);
         for (const stepName of ['compress', 'upload', 'extract', 'transcribe']) {
           if (slot.steps[stepName].state === 'active') {
             updateSlotStep(slotIndex, stepName, { state: 'error' });
           }
+        }
+        // アクティブスロットならエラーメッセージを表示
+        if (activeSlotIndex === slotIndex) {
+          document.getElementById("errorMsg").textContent = `エラー: ${error.message || error}`;
         }
       }
     }
@@ -4199,6 +4210,7 @@
 
         const blob = await resp.blob();
         const url = URL.createObjectURL(blob);
+        video.onloadeddata = () => URL.revokeObjectURL(url);
         video.src = url;
         video.play();
         status.textContent = '✅ プレビュー生成完了！（実際のレンダリング結果と同じ見た目です）';
