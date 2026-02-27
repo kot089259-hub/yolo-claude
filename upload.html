@@ -1537,10 +1537,204 @@
       display: block;
     }
 
+    /* ── Multi-Video Sidebar ── */
+    .app-layout {
+      display: flex;
+      min-height: 100vh;
+    }
+
+    .video-sidebar {
+      width: 220px;
+      min-width: 220px;
+      background: rgba(255, 255, 255, 0.92);
+      border-right: 1px solid #e2e8f0;
+      padding: 16px 12px;
+      overflow-y: auto;
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      backdrop-filter: blur(20px);
+      z-index: 60;
+    }
+
+    .sidebar-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: #334155;
+      margin-bottom: 12px;
+      letter-spacing: -0.3px;
+    }
+
+    .slot-list {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .slot-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 10px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.15s;
+      border: 1px solid transparent;
+      font-size: 12px;
+    }
+
+    .slot-item:hover {
+      background: rgba(0, 0, 0, 0.04);
+    }
+
+    .slot-item.active {
+      background: linear-gradient(135deg, #222222, #333333);
+      color: #fff;
+      border-color: #222;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    }
+
+    .slot-item.active .slot-name {
+      color: #fff;
+    }
+
+    .slot-item.active .slot-badge {
+      background: rgba(255, 255, 255, 0.2);
+      color: #fff;
+    }
+
+    .slot-number {
+      font-size: 10px;
+      font-weight: 700;
+      color: #94a3b8;
+      min-width: 18px;
+      text-align: center;
+    }
+
+    .slot-item.active .slot-number {
+      color: rgba(255, 255, 255, 0.7);
+    }
+
+    .slot-name {
+      flex: 1;
+      color: #64748b;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-weight: 500;
+    }
+
+    .slot-name.empty {
+      color: #cbd5e1;
+      font-style: italic;
+    }
+
+    .slot-badge {
+      font-size: 9px;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    .slot-badge.queued {
+      background: #fef3c7;
+      color: #92400e;
+    }
+
+    .slot-badge.rendering {
+      background: #dbeafe;
+      color: #1e40af;
+    }
+
+    .slot-badge.done {
+      background: #d1fae5;
+      color: #065f46;
+    }
+
+    .slot-badge.error {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+
+    .sidebar-actions {
+      margin-top: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .sidebar-btn {
+      width: 100%;
+      padding: 9px 12px;
+      border-radius: 8px;
+      border: none;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: 'Inter', 'Noto Sans JP', sans-serif;
+      transition: all 0.2s;
+    }
+
+    .sidebar-btn.render-all {
+      background: linear-gradient(135deg, #222222, #111111);
+      color: white;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    }
+
+    .sidebar-btn.render-all:hover {
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+      transform: translateY(-1px);
+    }
+
+    .sidebar-btn.render-all:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .queue-status-info {
+      margin-top: 10px;
+      font-size: 10px;
+      color: #94a3b8;
+      text-align: center;
+    }
+
     /* ══════════════════════════════════════
        Responsive — Tablet (≤768px)
        ══════════════════════════════════════ */
     @media (max-width: 768px) {
+      .app-layout {
+        flex-direction: column;
+      }
+
+      .video-sidebar {
+        width: 100%;
+        min-width: unset;
+        height: auto;
+        position: relative;
+        border-right: none;
+        border-bottom: 1px solid #e2e8f0;
+        padding: 12px;
+      }
+
+      .slot-list {
+        flex-direction: row;
+        flex-wrap: wrap;
+        gap: 4px;
+      }
+
+      .slot-item {
+        flex: 0 0 auto;
+        padding: 6px 10px;
+        font-size: 11px;
+      }
+
+      .sidebar-actions {
+        flex-direction: row;
+        margin-top: 10px;
+      }
+
       .container {
         padding: 32px 16px 60px;
       }
@@ -1940,7 +2134,19 @@
 </head>
 
 <body>
-  <div class="container">
+  <div class="app-layout">
+    <!-- Video Sidebar -->
+    <aside class="video-sidebar" id="videoSidebar">
+      <div class="sidebar-title">動画スロット</div>
+      <div class="slot-list" id="slotList"></div>
+      <div class="sidebar-actions">
+        <button class="sidebar-btn render-all" id="renderAllBtn" onclick="renderAllVideos()" disabled>全動画をレンダリング</button>
+      </div>
+      <div class="queue-status-info" id="queueStatusInfo"></div>
+    </aside>
+
+    <!-- Main Editor -->
+    <div class="container">
     <h1>🎬 動画編集ツール</h1>
     <p class="subtitle">動画をアップロードするとAIが自動で字幕をつけます、その他簡単な編集も可能です。</p>
 
@@ -2462,7 +2668,8 @@
     <div class="save-toast" id="saveToast">✅ 保存しました</div>
 
     <div class="error-msg" id="errorMsg"></div>
-  </div>
+  </div><!-- /container -->
+  </div><!-- /app-layout -->
 
   <script>
     // Tab Navigation
@@ -2482,33 +2689,90 @@
     }
 
     const SERVER = window.location.origin;
-    let currentFilename = "";
-    let currentSubtitles = [];
-    let currentStyle = {
-      fontFamily: "Noto Sans CJK JP",
-      fontSize: 42,
-      fontColor: "#ffffff",
-      bgColor: "#000000",
-      bgOpacity: 0.75,
-      position: "bottom",
-      posX: 50,
-      posY: 90,
-      bold: true,
-      animation: "fadeIn",
-      outlineWidth: 0,
-      outlineColor: "#000000"
-    };
-    let audioTracks = [];
-    let editSettings = {
-      trim: { startTime: 0, endTime: null },
-      transition: { fadeIn: 0, fadeOut: 0 },
-      speedSections: [{ start: 0, end: 9999, speed: 1 }],
-      additionalVideos: [],
-      imageOverlays: [],
-      filters: { brightness: 100, contrast: 100, saturate: 100, sepia: 0, grayscale: 0, hueRotate: 0, blur: 0 },
-      kenBurns: { enabled: false, startScale: 1.0, endScale: 1.2, startX: 0, endX: 0, startY: 0, endY: 0 },
-      textOverlays: []
-    };
+
+    // ── マルチ動画スロット管理 ──
+    const MAX_VIDEOS = 12;
+    let activeSlotIndex = 0;
+
+    function createEmptySlot() {
+      return {
+        filename: "",
+        subtitles: [],
+        style: {
+          fontFamily: "Noto Sans CJK JP",
+          fontSize: 42,
+          fontColor: "#ffffff",
+          bgColor: "#000000",
+          bgOpacity: 0.75,
+          position: "bottom",
+          posX: 50,
+          posY: 90,
+          bold: true,
+          animation: "fadeIn",
+          outlineWidth: 0,
+          outlineColor: "#000000"
+        },
+        audioTracks: [],
+        editSettings: {
+          trim: { startTime: 0, endTime: null },
+          transition: { fadeIn: 0, fadeOut: 0 },
+          speedSections: [{ start: 0, end: 9999, speed: 1 }],
+          additionalVideos: [],
+          imageOverlays: [],
+          filters: { brightness: 100, contrast: 100, saturate: 100, sepia: 0, grayscale: 0, hueRotate: 0, blur: 0 },
+          kenBurns: { enabled: false, startScale: 1.0, endScale: 1.2, startX: 0, endX: 0, startY: 0, endY: 0 },
+          textOverlays: []
+        },
+        undoStack: [],
+        redoStack: [],
+        uploaded: false,
+        videoObjectURL: null,
+        renderStatus: null, // null | "queued" | "rendering" | "done" | "error"
+        renderJobId: null,
+        renderResult: null
+      };
+    }
+
+    let videoSlots = Array.from({ length: MAX_VIDEOS }, () => createEmptySlot());
+
+    // 既存コードとの互換性: グローバル変数をアクティブスロットに透過ルーティング
+    Object.defineProperties(window, {
+      currentFilename: {
+        get() { return videoSlots[activeSlotIndex].filename; },
+        set(v) { videoSlots[activeSlotIndex].filename = v; },
+        configurable: true
+      },
+      currentSubtitles: {
+        get() { return videoSlots[activeSlotIndex].subtitles; },
+        set(v) { videoSlots[activeSlotIndex].subtitles = v; },
+        configurable: true
+      },
+      currentStyle: {
+        get() { return videoSlots[activeSlotIndex].style; },
+        set(v) { videoSlots[activeSlotIndex].style = v; },
+        configurable: true
+      },
+      audioTracks: {
+        get() { return videoSlots[activeSlotIndex].audioTracks; },
+        set(v) { videoSlots[activeSlotIndex].audioTracks = v; },
+        configurable: true
+      },
+      editSettings: {
+        get() { return videoSlots[activeSlotIndex].editSettings; },
+        set(v) { videoSlots[activeSlotIndex].editSettings = v; },
+        configurable: true
+      },
+      undoStack: {
+        get() { return videoSlots[activeSlotIndex].undoStack; },
+        set(v) { videoSlots[activeSlotIndex].undoStack = v; },
+        configurable: true
+      },
+      redoStack: {
+        get() { return videoSlots[activeSlotIndex].redoStack; },
+        set(v) { videoSlots[activeSlotIndex].redoStack = v; },
+        configurable: true
+      }
+    });
 
     // ── プレビュー字幕オーバーレイ ──
     function updateSubtitleOverlay() {
@@ -2585,9 +2849,7 @@
     // DOMロード後に設定
     document.addEventListener('DOMContentLoaded', setupVideoOverlay);
 
-    // Undo/Redo
-    let undoStack = [];
-    let redoStack = [];
+    // Undo/Redo (undoStack/redoStack are routed via Object.defineProperties to videoSlots)
     const MAX_UNDO = 50;
 
     function takeSnapshot() {
@@ -2636,7 +2898,156 @@
       displayOverlays();
       displayMergeVideos();
       displayTelops();
+      renderSlotList();
     }
+
+    // ── サイドバー: スロットリスト描画 ──
+    function renderSlotList() {
+      const list = document.getElementById('slotList');
+      if (!list) return;
+
+      const uploadedCount = videoSlots.filter(s => s.uploaded).length;
+      document.getElementById('renderAllBtn').disabled = uploadedCount === 0;
+
+      list.innerHTML = videoSlots.map((slot, i) => {
+        const isActive = i === activeSlotIndex;
+        const name = slot.uploaded ? slot.filename.replace(/^upload_\d+/, '動画').replace(/\.\w+$/, '') : '';
+        const displayName = slot.uploaded ? `動画${i + 1}` : '(空)';
+        let badgeHTML = '';
+        if (slot.renderStatus === 'queued') badgeHTML = '<span class="slot-badge queued">待機中</span>';
+        else if (slot.renderStatus === 'rendering') badgeHTML = '<span class="slot-badge rendering">処理中</span>';
+        else if (slot.renderStatus === 'done') badgeHTML = '<span class="slot-badge done">完了</span>';
+        else if (slot.renderStatus === 'error') badgeHTML = '<span class="slot-badge error">エラー</span>';
+
+        return `<div class="slot-item ${isActive ? 'active' : ''}" onclick="switchSlot(${i})" title="${slot.filename || '空きスロット'}">
+          <span class="slot-number">${i + 1}</span>
+          <span class="slot-name ${slot.uploaded ? '' : 'empty'}">${displayName}</span>
+          ${badgeHTML}
+        </div>`;
+      }).join('');
+    }
+
+    // ── スロット切り替え ──
+    function switchSlot(index) {
+      if (index === activeSlotIndex) return;
+      if (index < 0 || index >= MAX_VIDEOS) return;
+
+      // 現在のフォーム値をスロットに保存
+      try { updateStyle(); } catch(e) {}
+      try { updateEditSettings(); } catch(e) {}
+
+      activeSlotIndex = index;
+      const slot = videoSlots[activeSlotIndex];
+
+      // ビデオプレビュー切り替え
+      const previewVideo = document.getElementById('previewVideo');
+      const videoPreview = document.getElementById('videoPreview');
+      if (slot.uploaded && slot.videoObjectURL) {
+        previewVideo.src = slot.videoObjectURL;
+        videoPreview.style.display = 'block';
+      } else if (slot.uploaded && slot.filename) {
+        previewVideo.src = `${SERVER}/public/${slot.filename}`;
+        videoPreview.style.display = 'block';
+      } else {
+        previewVideo.src = '';
+        videoPreview.style.display = 'none';
+      }
+
+      // 結果セクション表示
+      const resultSection = document.getElementById('resultSection');
+      if (slot.uploaded) {
+        resultSection.classList.add('active');
+      } else {
+        resultSection.classList.remove('active');
+      }
+
+      // フォーム値を復元
+      populateStyleForm();
+      populateEditForm();
+      refreshUI();
+      updateUndoButtons();
+      applyPreviewFilter();
+    }
+
+    // ── フォーム復元: スタイル設定 ──
+    function populateStyleForm() {
+      const s = currentStyle;
+      document.getElementById('styleFont').value = s.fontFamily;
+      document.getElementById('styleFontSize').value = s.fontSize;
+      document.getElementById('styleFontColor').value = s.fontColor;
+      document.getElementById('styleFontColorHex').value = s.fontColor;
+      document.getElementById('styleBgColor').value = s.bgColor;
+      document.getElementById('styleBgColorHex').value = s.bgColor;
+      document.getElementById('styleBgOpacity').value = Math.round(s.bgOpacity * 100);
+      document.getElementById('stylePosX').value = s.posX || 50;
+      document.getElementById('stylePosY').value = s.posY || 90;
+      document.getElementById('styleOutlineWidth').value = s.outlineWidth || 0;
+      document.getElementById('styleOutlineColor').value = s.outlineColor || '#000000';
+      document.getElementById('styleOutlineColorHex').value = s.outlineColor || '#000000';
+      document.getElementById('styleAnimation').value = s.animation || 'fadeIn';
+
+      const boldBtn = document.getElementById('styleBold');
+      if (s.bold) boldBtn.classList.add('active');
+      else boldBtn.classList.remove('active');
+      document.getElementById('boldLabel').textContent = s.bold ? 'ON' : 'OFF';
+
+      // 位置ボタン
+      document.querySelectorAll('.pos-btn').forEach(b => b.classList.remove('active'));
+      const posMap = { top: 0, center: 1, bottom: 2, custom: 3 };
+      const posIdx = posMap[s.position] ?? 2;
+      const posBtns = document.querySelectorAll('.pos-btn');
+      if (posBtns[posIdx]) posBtns[posIdx].classList.add('active');
+      document.getElementById('customPosField').style.display = s.position === 'custom' ? '' : 'none';
+
+      updatePreview();
+    }
+
+    // ── フォーム復元: 編集設定 ──
+    function populateEditForm() {
+      const e = editSettings;
+      document.getElementById('trimStart').value = e.trim?.startTime || 0;
+      document.getElementById('trimEnd').value = e.trim?.endTime || '';
+      document.getElementById('fadeIn').value = e.transition?.fadeIn || 0;
+      document.getElementById('fadeOut').value = e.transition?.fadeOut || 0;
+      const speed = (e.speedSections && e.speedSections[0]) ? e.speedSections[0].speed : 1;
+      document.getElementById('playbackSpeed').value = speed;
+      updateSpeedPresets();
+
+      // フィルター
+      const f = e.filters || {};
+      document.getElementById('filterBrightness').value = f.brightness ?? 100;
+      document.getElementById('filterContrast').value = f.contrast ?? 100;
+      document.getElementById('filterSaturate').value = f.saturate ?? 100;
+      document.getElementById('filterSepia').value = f.sepia ?? 0;
+      document.getElementById('filterGrayscale').value = f.grayscale ?? 0;
+      document.getElementById('filterHue').value = f.hueRotate ?? 0;
+      document.getElementById('filterBlur').value = f.blur ?? 0;
+      // ラベル更新
+      document.getElementById('filterBrightnessVal').textContent = (f.brightness ?? 100) + '%';
+      document.getElementById('filterContrastVal').textContent = (f.contrast ?? 100) + '%';
+      document.getElementById('filterSaturateVal').textContent = (f.saturate ?? 100) + '%';
+      document.getElementById('filterSepiaVal').textContent = (f.sepia ?? 0) + '%';
+      document.getElementById('filterGrayscaleVal').textContent = (f.grayscale ?? 0) + '%';
+      document.getElementById('filterHueVal').textContent = (f.hueRotate ?? 0) + '\u00b0';
+      document.getElementById('filterBlurVal').textContent = (f.blur ?? 0) + 'px';
+
+      // Ken Burns
+      const kb = e.kenBurns || {};
+      const kbToggle = document.getElementById('kbToggle');
+      if (kb.enabled) kbToggle.classList.add('active');
+      else kbToggle.classList.remove('active');
+      document.getElementById('kbLabel').textContent = kb.enabled ? 'ON' : 'OFF';
+      document.getElementById('kbControls').style.display = kb.enabled ? '' : 'none';
+      document.getElementById('kbStartScale').value = kb.startScale ?? 1.0;
+      document.getElementById('kbEndScale').value = kb.endScale ?? 1.2;
+      document.getElementById('kbStartX').value = kb.startX ?? 0;
+      document.getElementById('kbEndX').value = kb.endX ?? 0;
+      document.getElementById('kbStartY').value = kb.startY ?? 0;
+      document.getElementById('kbEndY').value = kb.endY ?? 0;
+    }
+
+    // 初回描画
+    document.addEventListener('DOMContentLoaded', () => { renderSlotList(); });
 
     // Drag & Drop
     const uploadArea = document.getElementById("uploadArea");
@@ -2934,10 +3345,14 @@
     }
 
     async function processFile(file) {
+      const targetSlot = activeSlotIndex;
+
       const videoPreview = document.getElementById("videoPreview");
       const previewVideo = document.getElementById("previewVideo");
-      previewVideo.src = URL.createObjectURL(file);
+      const objectURL = URL.createObjectURL(file);
+      previewVideo.src = objectURL;
       videoPreview.style.display = "block";
+      videoSlots[targetSlot].videoObjectURL = objectURL;
 
       document.getElementById("progressSection").classList.add("active");
       document.getElementById("resultSection").classList.remove("active");
@@ -2967,7 +3382,8 @@
         const formData = new FormData();
         formData.append("video", fileToUpload);
         const uploadData = await uploadWithProgress(`${SERVER}/api/upload`, formData);
-        currentFilename = uploadData.filename;
+        videoSlots[targetSlot].filename = uploadData.filename;
+        videoSlots[targetSlot].uploaded = true;
         setStep("stepUpload", "done");
 
         // Step 3: Transcribe
@@ -2976,7 +3392,7 @@
         const transcribeRes = await fetch(`${SERVER}/api/transcribe`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ filename: currentFilename }),
+          body: JSON.stringify({ filename: videoSlots[targetSlot].filename }),
         });
         setStep("stepExtract", "done");
 
@@ -2987,8 +3403,13 @@
 
         const data = await transcribeRes.json();
         setStep("stepTranscribe", "done");
-        currentSubtitles = data.subtitles;
-        displayResults();
+        videoSlots[targetSlot].subtitles = data.subtitles;
+        renderSlotList();
+
+        // アクティブスロットが変わっていなければUIを更新
+        if (activeSlotIndex === targetSlot) {
+          displayResults();
+        }
 
       } catch (error) {
         document.getElementById("errorMsg").textContent = `エラー: ${error.message}`;
@@ -3737,6 +4158,7 @@ echo "✅ レンダリング完了: $OUTPUT"
 
     // Export: MP4 Render
     async function startRender() {
+      const renderSlotIdx = activeSlotIndex;
       const btn = document.getElementById('renderBtn');
       const status = document.getElementById('renderStatus');
       const result = document.getElementById('renderResult');
@@ -3745,6 +4167,10 @@ echo "✅ レンダリング完了: $OUTPUT"
       status.className = 'render-status';
       status.textContent = '\u203b \u8a2d\u5b9a\u3092\u4fdd\u5b58\u4e2d...';
       result.innerHTML = '';
+
+      videoSlots[renderSlotIdx].renderStatus = 'rendering';
+      renderSlotList();
+
       try {
         // ステップ1: 設定保存
         try { await saveSubtitles(); } catch (e) { throw new Error('字幕保存失敗: ' + e.message); }
@@ -3769,6 +4195,12 @@ echo "✅ レンダリング完了: $OUTPUT"
         const jobId = data.jobId;
         if (!jobId) throw new Error('ジョブIDが取得できませんでした');
 
+        videoSlots[renderSlotIdx].renderJobId = jobId;
+        if (data.status === 'queued') {
+          videoSlots[renderSlotIdx].renderStatus = 'queued';
+          renderSlotList();
+        }
+
         // ステップ3: ステータスポーリング
         status.textContent = '\u203b FFmpeg\u3067\u30ec\u30f3\u30c0\u30ea\u30f3\u30b0\u4e2d... \u6570\u5206\u304b\u304b\u308a\u307e\u3059';
         let dots = 0;
@@ -3789,6 +4221,10 @@ echo "✅ レンダリング完了: $OUTPUT"
                 clearInterval(pollInterval);
                 reject(new Error(job.error || 'レンダリングに失敗'));
               } else {
+                if (job.status === 'rendering') {
+                  videoSlots[renderSlotIdx].renderStatus = 'rendering';
+                  renderSlotList();
+                }
                 setTimeout(check, 3000);
               }
             } catch (e) {
@@ -3798,10 +4234,16 @@ echo "✅ レンダリング完了: $OUTPUT"
           setTimeout(check, 3000);
         });
 
+        videoSlots[renderSlotIdx].renderStatus = 'done';
+        videoSlots[renderSlotIdx].renderResult = jobResult;
+        renderSlotList();
+
         status.className = 'render-status success';
         status.textContent = '\u2705 \u30ec\u30f3\u30c0\u30ea\u30f3\u30b0\u5b8c\u4e86\uff01';
         result.innerHTML = `<a class="download-link" href="${SERVER}/${jobResult.path}" download="${jobResult.filename}">\u2b07 ${jobResult.filename} \u3092\u30c0\u30a6\u30f3\u30ed\u30fc\u30c9</a>`;
       } catch (error) {
+        videoSlots[renderSlotIdx].renderStatus = 'error';
+        renderSlotList();
         status.className = 'render-status error';
         status.textContent = `\u274c \u30a8\u30e9\u30fc: ${error.message}`;
         console.error('render error:', error);
@@ -3809,6 +4251,136 @@ echo "✅ レンダリング完了: $OUTPUT"
         btn.disabled = false;
         btn.textContent = '\ud83d\udce6 \u52d5\u753b\u3092\u66f8\u304d\u51fa\u3057';
       }
+    }
+
+    // ── 一括レンダリング ──
+    async function renderAllVideos() {
+      const btn = document.getElementById('renderAllBtn');
+      btn.disabled = true;
+      btn.textContent = '処理中...';
+
+      // 現在のフォーム値を保存
+      try { updateStyle(); } catch(e) {}
+      try { updateEditSettings(); } catch(e) {}
+
+      // アップロード済みスロットのファイル名を収集 & 設定を保存
+      const uploadedSlots = [];
+      for (let i = 0; i < MAX_VIDEOS; i++) {
+        const slot = videoSlots[i];
+        if (!slot.uploaded || !slot.filename) continue;
+        uploadedSlots.push({ index: i, filename: slot.filename });
+        slot.renderStatus = 'queued';
+
+        // 各スロットの設定をサーバーに保存
+        const baseName = slot.filename.replace(/\.[^.]+$/, '');
+        try {
+          await fetch(`${SERVER}/api/save-subtitles`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ filename: slot.filename, subtitles: slot.subtitles })
+          });
+          await fetch(`${SERVER}/api/save-style`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ filename: slot.filename, style: slot.style })
+          });
+          await fetch(`${SERVER}/api/save-edit`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ filename: slot.filename, editSettings: slot.editSettings })
+          });
+          if (slot.audioTracks.length > 0) {
+            await fetch(`${SERVER}/api/save-audio`, {
+              method: 'POST', headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ filename: slot.filename, audioTracks: slot.audioTracks })
+            });
+          }
+        } catch(e) { console.error(`スロット${i+1}の設定保存エラー:`, e); }
+      }
+
+      renderSlotList();
+
+      if (uploadedSlots.length === 0) {
+        btn.disabled = false;
+        btn.textContent = '全動画をレンダリング';
+        return;
+      }
+
+      try {
+        const res = await fetch(`${SERVER}/api/render-batch`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ filenames: uploadedSlots.map(s => s.filename) })
+        });
+        if (!res.ok) throw new Error('バッチレンダリング開始に失敗');
+        const data = await res.json();
+
+        // ジョブIDをスロットに記録
+        data.jobs.forEach((job, idx) => {
+          const slotIdx = uploadedSlots[idx].index;
+          videoSlots[slotIdx].renderJobId = job.jobId;
+          videoSlots[slotIdx].renderStatus = job.queued ? 'queued' : 'rendering';
+        });
+        renderSlotList();
+
+        // ポーリング開始
+        await pollAllRenderJobs(uploadedSlots.map(s => s.index));
+
+      } catch (error) {
+        console.error('バッチレンダリングエラー:', error);
+        document.getElementById('queueStatusInfo').textContent = `エラー: ${error.message}`;
+      } finally {
+        btn.disabled = false;
+        btn.textContent = '全動画をレンダリング';
+      }
+    }
+
+    // ── 全ジョブポーリング ──
+    async function pollAllRenderJobs(slotIndices) {
+      const statusInfo = document.getElementById('queueStatusInfo');
+
+      return new Promise((resolve) => {
+        const poll = async () => {
+          let allDone = true;
+          let doneCount = 0;
+          const total = slotIndices.length;
+
+          for (const idx of slotIndices) {
+            const slot = videoSlots[idx];
+            if (!slot.renderJobId) continue;
+            if (slot.renderStatus === 'done' || slot.renderStatus === 'error') {
+              doneCount++;
+              continue;
+            }
+
+            allDone = false;
+            try {
+              const res = await fetch(`${SERVER}/api/render-status/${slot.renderJobId}`);
+              const job = await res.json();
+              if (job.status === 'done') {
+                slot.renderStatus = 'done';
+                slot.renderResult = job;
+                doneCount++;
+              } else if (job.status === 'error') {
+                slot.renderStatus = 'error';
+                doneCount++;
+              } else if (job.status === 'rendering') {
+                slot.renderStatus = 'rendering';
+              } else if (job.status === 'queued') {
+                slot.renderStatus = 'queued';
+              }
+            } catch(e) { /* retry next cycle */ }
+          }
+
+          renderSlotList();
+          statusInfo.textContent = `${doneCount}/${total} 完了`;
+
+          if (allDone || doneCount === total) {
+            statusInfo.textContent = `全${total}件完了`;
+            resolve();
+          } else {
+            setTimeout(poll, 3000);
+          }
+        };
+        setTimeout(poll, 3000);
+      });
     }
 
     // Export: SRT/VTT
@@ -3864,20 +4436,29 @@ echo "✅ レンダリング完了: $OUTPUT"
 
     // Project Save/Load
     function downloadProject() {
+      // 現在のフォーム値を保存
+      try { updateStyle(); } catch(e) {}
+      try { updateEditSettings(); } catch(e) {}
+
+      const slots = videoSlots.map(slot => ({
+        filename: slot.filename,
+        subtitles: slot.subtitles,
+        style: slot.style,
+        audioTracks: slot.audioTracks,
+        editSettings: slot.editSettings,
+        uploaded: slot.uploaded
+      }));
+
       const project = {
-        version: 1,
-        filename: currentFilename,
-        subtitles: currentSubtitles,
-        style: currentStyle,
-        audioTracks: audioTracks,
-        editSettings: editSettings
+        version: 2,
+        activeSlotIndex,
+        slots
       };
       const blob = new Blob([JSON.stringify(project, null, 2)], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
-      const baseName = currentFilename ? currentFilename.replace(/\.[^.]+$/, '') : 'project';
       a.href = url;
-      a.download = `${baseName}_project.json`;
+      a.download = 'project.json';
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -3892,11 +4473,48 @@ echo "✅ レンダリング完了: $OUTPUT"
       reader.onload = function (e) {
         try {
           const project = JSON.parse(e.target.result);
-          if (project.subtitles) currentSubtitles = project.subtitles;
-          if (project.style) currentStyle = project.style;
-          if (project.audioTracks) audioTracks = project.audioTracks;
-          if (project.editSettings) editSettings = project.editSettings;
-          if (project.filename) currentFilename = project.filename;
+
+          if (project.version === 2 && project.slots) {
+            // v2形式: 全スロット復元
+            project.slots.forEach((saved, i) => {
+              if (i >= MAX_VIDEOS) return;
+              const slot = videoSlots[i];
+              if (saved.filename) slot.filename = saved.filename;
+              if (saved.subtitles) slot.subtitles = saved.subtitles;
+              if (saved.style) slot.style = saved.style;
+              if (saved.audioTracks) slot.audioTracks = saved.audioTracks;
+              if (saved.editSettings) slot.editSettings = saved.editSettings;
+              slot.uploaded = !!saved.uploaded;
+            });
+            if (typeof project.activeSlotIndex === 'number') {
+              activeSlotIndex = project.activeSlotIndex;
+            }
+          } else {
+            // v1形式（旧形式）: スロット0にロード
+            activeSlotIndex = 0;
+            const slot = videoSlots[0];
+            if (project.subtitles) slot.subtitles = project.subtitles;
+            if (project.style) slot.style = project.style;
+            if (project.audioTracks) slot.audioTracks = project.audioTracks;
+            if (project.editSettings) slot.editSettings = project.editSettings;
+            if (project.filename) {
+              slot.filename = project.filename;
+              slot.uploaded = true;
+            }
+          }
+
+          // ビデオプレビュー更新
+          const slot = videoSlots[activeSlotIndex];
+          const previewVideo = document.getElementById('previewVideo');
+          const videoPreview = document.getElementById('videoPreview');
+          if (slot.uploaded && slot.filename) {
+            previewVideo.src = `${SERVER}/public/${slot.filename}`;
+            videoPreview.style.display = 'block';
+            document.getElementById('resultSection').classList.add('active');
+          }
+
+          populateStyleForm();
+          populateEditForm();
           takeSnapshot();
           refreshUI();
           showToast();

@@ -92,9 +92,27 @@ setInterval(() => {
 }, 30 * 1000); // 30秒ごと
 
 // ── 同時レンダリング制限（早期宣言 — ヘルスチェックで参照） ──
-const MAX_CONCURRENT_RENDERS = 2;
+const MAX_CONCURRENT_RENDERS = 4;
 let activeRenders = 0;
 let previewInProgress = false;
+
+// ── レンダリングキュー ──
+interface QueuedJob {
+    jobId: string;
+    filename: string;
+}
+const renderQueue: QueuedJob[] = [];
+
+function processQueue() {
+    while (activeRenders < MAX_CONCURRENT_RENDERS && renderQueue.length > 0) {
+        const job = renderQueue.shift()!;
+        // キュー内の残りジョブのpositionを更新
+        renderQueue.forEach((j, idx) => {
+            setJobStatus(j.jobId, { status: "queued", position: idx + 1 });
+        });
+        executeRender(job.jobId, job.filename);
+    }
+}
 
 // ── ヘルスチェック（Render用 — 詳細情報付き）──
 app.get("/health", (_req, res) => {
@@ -652,40 +670,14 @@ app.post("/api/preview", async (req, res) => {
     }
 });
 
-// MP4レンダリングAPI（非同期 — FFmpegをバックグラウンドで実行）
-app.post("/api/render", async (req, res) => {
-    const rawFilename = req.body.filename;
-    if (!rawFilename) {
-        res.status(400).json({ error: "filenameが必要です" });
-        return;
-    }
-    const filename = sanitizeFilename(rawFilename);
-
-    // ディスク容量チェック
-    const disk = checkDiskSpace();
-    if (!disk.available) {
-        res.status(507).json({ error: `ディスク容量不足です (残り${disk.freeMB}MB)。古いファイルが削除されるのをお待ちください。` });
-        return;
-    }
-
-    // 同時レンダリング数チェック
-    if (activeRenders >= MAX_CONCURRENT_RENDERS) {
-        res.status(429).json({ error: `現在${activeRenders}件のレンダリングが実行中です。しばらくお待ちください。` });
-        return;
-    }
+// ── executeRender: レンダリング実行関数（キューから呼ばれる） ──
+function executeRender(jobId: string, filename: string) {
     activeRenders++;
-
-    const baseName = path.parse(filename).name;
-    const jobId = `${baseName}_${Date.now()}`;
     setJobStatus(jobId, { status: "rendering" });
+    console.log(`🎬 レンダリング実行開始 (job: ${jobId}, active: ${activeRenders}/${MAX_CONCURRENT_RENDERS})`);
 
-    console.log(`🎬 レンダリングジョブ受付 (job: ${jobId})`);
-
-    // ★ 先にレスポンスを返す
-    res.json({ jobId });
-
-    // ★ 重い処理はレスポンス送信後に非同期で実行
     setImmediate(async () => {
+        const baseName = path.parse(filename).name;
         try {
             const outputDir = path.join(__dirname, "output");
             if (!fs.existsSync(outputDir)) fs.mkdirSync(outputDir, { recursive: true });
@@ -708,13 +700,11 @@ app.post("/api/render", async (req, res) => {
 
             console.log(`🔧 FFmpeg軽量モード準備中 (job: ${jobId})...`);
 
-            // ★ 軽量モード: 複雑なフィルターを使わず、字幕+720pのみ
             const { generateASSFile, getVideoInfo } = await import("./ffmpegRender");
 
             const videoInfo = getVideoInfo(videoPath);
             console.log(`📐 動画情報: ${videoInfo.width}x${videoInfo.height}, ${videoInfo.duration.toFixed(1)}秒`);
 
-            // ASS字幕生成（字幕がある場合のみ）
             // ★ 1080p出力 — 縦動画対応でスケール軸を動的に選択
             const isVertical = videoInfo.height > videoInfo.width;
             let outWidth: number, outHeight: number, scaleFilter: string;
@@ -803,19 +793,102 @@ app.post("/api/render", async (req, res) => {
                         error: `FFmpegがエラーコード ${code} で終了しました`,
                     });
                 }
+                processQueue();
             });
 
             child.on("error", (err: Error) => {
                 activeRenders--;
                 console.error(`❌ FFmpegエラー (job: ${jobId}):`, err.message);
                 setJobStatus(jobId, { status: "error", error: err.message });
+                processQueue();
             });
 
         } catch (error: any) {
             activeRenders--;
             console.error(`❌ レンダリング準備エラー (job: ${jobId}):`, error.message);
             setJobStatus(jobId, { status: "error", error: error.message });
+            processQueue();
         }
+    });
+}
+
+// MP4レンダリングAPI（非同期 — FFmpegをバックグラウンドで実行）
+app.post("/api/render", async (req, res) => {
+    const rawFilename = req.body.filename;
+    if (!rawFilename) {
+        res.status(400).json({ error: "filenameが必要です" });
+        return;
+    }
+    const filename = sanitizeFilename(rawFilename);
+
+    // ディスク容量チェック
+    const disk = checkDiskSpace();
+    if (!disk.available) {
+        res.status(507).json({ error: `ディスク容量不足です (残り${disk.freeMB}MB)。古いファイルが削除されるのをお待ちください。` });
+        return;
+    }
+
+    const baseName = path.parse(filename).name;
+    const jobId = `${baseName}_${Date.now()}`;
+
+    if (activeRenders >= MAX_CONCURRENT_RENDERS) {
+        // キューに追加
+        const position = renderQueue.length + 1;
+        renderQueue.push({ jobId, filename });
+        setJobStatus(jobId, { status: "queued", position });
+        console.log(`📋 レンダリングキューに追加 (job: ${jobId}, position: ${position})`);
+        res.json({ jobId, status: "queued", position });
+        return;
+    }
+
+    console.log(`🎬 レンダリングジョブ受付 (job: ${jobId})`);
+    res.json({ jobId });
+    executeRender(jobId, filename);
+});
+
+// バッチレンダリングAPI — 複数動画を一括キュー投入
+app.post("/api/render-batch", async (req, res) => {
+    const { filenames } = req.body;
+    if (!filenames || !Array.isArray(filenames) || filenames.length === 0) {
+        res.status(400).json({ error: "filenames配列が必要です" });
+        return;
+    }
+
+    const disk = checkDiskSpace();
+    if (!disk.available) {
+        res.status(507).json({ error: `ディスク容量不足です (残り${disk.freeMB}MB)` });
+        return;
+    }
+
+    const jobs: { jobId: string; queued: boolean; position: number }[] = [];
+
+    for (const rawFilename of filenames) {
+        const filename = sanitizeFilename(rawFilename);
+        const baseName = path.parse(filename).name;
+        const jobId = `${baseName}_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+
+        if (activeRenders < MAX_CONCURRENT_RENDERS) {
+            jobs.push({ jobId, queued: false, position: 0 });
+            executeRender(jobId, filename);
+        } else {
+            const position = renderQueue.length + 1;
+            renderQueue.push({ jobId, filename });
+            setJobStatus(jobId, { status: "queued", position });
+            jobs.push({ jobId, queued: true, position });
+        }
+    }
+
+    console.log(`📋 バッチレンダリング受付: ${jobs.length}件 (即時: ${jobs.filter(j => !j.queued).length}, キュー: ${jobs.filter(j => j.queued).length})`);
+    res.json({ jobs });
+});
+
+// キューステータス確認API
+app.get("/api/queue-status", (_req, res) => {
+    res.json({
+        activeRenders,
+        maxConcurrent: MAX_CONCURRENT_RENDERS,
+        queueLength: renderQueue.length,
+        queuedJobs: renderQueue.map((j, i) => ({ jobId: j.jobId, position: i + 1 })),
     });
 });
 
