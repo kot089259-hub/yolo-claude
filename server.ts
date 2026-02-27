@@ -645,43 +645,6 @@ app.post("/api/save-edit", (req, res) => {
     }
 });
 
-// 字幕PNG画像保存API（ブラウザCanvasで描画した字幕をオーバーレイ用に保存）
-app.post("/api/save-subtitle-images", (req, res) => {
-    const { filename, images } = req.body;
-    if (!filename || !images || !Array.isArray(images)) {
-        res.status(400).json({ error: "filenameとimages配列が必要です" });
-        return;
-    }
-
-    try {
-        const baseName = path.parse(sanitizeFilename(filename)).name;
-        const savedImages: { path: string; start: number; end: number }[] = [];
-
-        for (let i = 0; i < images.length; i++) {
-            const img = images[i];
-            const dataMatch = img.data.match(/^data:image\/png;base64,(.+)$/);
-            if (!dataMatch) continue;
-
-            const pngFilename = `${baseName}_subimg_${i}.png`;
-            const pngPath = path.join(__dirname, "public", pngFilename);
-            fs.writeFileSync(pngPath, Buffer.from(dataMatch[1], "base64"));
-            savedImages.push({
-                path: pngFilename,
-                start: img.start,
-                end: img.end,
-            });
-        }
-
-        // メタデータ保存
-        const metaPath = path.join(__dirname, "public", `${baseName}_subimages.json`);
-        fs.writeFileSync(metaPath, JSON.stringify(savedImages, null, 2));
-        console.log(`🖼️ 字幕PNG ${savedImages.length}枚を保存: ${baseName}_subimages.json`);
-        res.json({ success: true, count: savedImages.length });
-    } catch (error: any) {
-        res.status(500).json({ error: error.message });
-    }
-});
-
 // 動画ファイルアップロードAPI（追加動画用）
 app.post("/api/upload-video", upload.single("video"), (req, res) => {
     if (!req.file) {
@@ -914,21 +877,11 @@ function executeRender(jobId: string, filename: string) {
 
             console.log(`📐 レンダリング: ${videoInfo.width}x${videoInfo.height} → ${outWidth}x${outHeight} (${isVertical ? '縦' : '横'})`);
             const textOverlays = editSettings.textOverlays || [];
-            // ★ 字幕方式の選択: PNG画像オーバーレイ（ブラウザCanvasで描画済み）→ ASS字幕フォールバック
-            const subImagesPath = path.join(publicDir, `${baseName}_subimages.json`);
-            let subImages: { path: string; start: number; end: number }[] = [];
-            const useImageOverlay = fs.existsSync(subImagesPath);
-
             const hasSubtitles = subtitles.length > 0 || textOverlays.length > 0;
             let assPath = "";
             let assFilter = "";
 
-            if (useImageOverlay) {
-                // PNG画像オーバーレイ方式（プレビューと完全一致）
-                subImages = JSON.parse(fs.readFileSync(subImagesPath, "utf-8"));
-                console.log(`🖼️ 字幕PNG ${subImages.length}枚を使用（画像オーバーレイ方式）`);
-            } else if (hasSubtitles) {
-                // ASS字幕フォールバック（PNGが無い場合）
+            if (hasSubtitles) {
                 assPath = outputPath.replace(/\.mp4$/, ".ass");
                 const assContent = generateASSFile(
                     subtitles,
@@ -940,7 +893,6 @@ function executeRender(jobId: string, filename: string) {
                 fs.writeFileSync(assPath, assContent, "utf-8");
                 const escapedPath = assPath.replace(/\\/g, "/").replace(/:/g, "\\:");
                 assFilter = `,ass='${escapedPath}'`;
-                console.log(`📝 ASS字幕方式を使用（フォールバック）`);
             }
 
             // トリム
@@ -958,8 +910,8 @@ function executeRender(jobId: string, filename: string) {
             // スケーリング（常に適用）
             videoFilters.push(scaleFilter);
 
-            // 字幕（ASS方式の場合のみここに追加。PNG方式は後段のfilter_complexで処理）
-            if (!useImageOverlay && assFilter) {
+            // 字幕（ASS）
+            if (assFilter) {
                 videoFilters.push(assFilter.replace(/^,/, ''));
             }
 
@@ -1074,80 +1026,38 @@ function executeRender(jobId: string, filename: string) {
                 }
             }
 
-            // ★ PNG字幕オーバーレイの入力 (-i) を構築
-            const subImageInputs: string[] = [];
-            if (useImageOverlay && subImages.length > 0) {
-                for (const si of subImages) {
-                    const siPath = path.join(publicDir, si.path);
-                    if (fs.existsSync(siPath)) {
-                        subImageInputs.push(`-i "${siPath}"`);
-                    }
-                }
-            }
-
-            // 入力インデックス計算: [0]=動画, [1..N]=音声トラック, [N+1..M]=字幕PNG
-            const audioStartIdx = 1;
-            const subImageStartIdx = audioStartIdx + validAudioTracks.length;
-
-            // ★ filter_complex 構築
-            // PNG字幕 or 音声トラックがある場合は filter_complex を使用
+            // ★ filter_complex 構築（音声トラックがある場合は必須）
             let filterArg = "";
             let mapArgs = "";
-            const needsComplex = validAudioTracks.length > 0 || (useImageOverlay && subImages.length > 0);
 
-            if (needsComplex) {
+            if (validAudioTracks.length > 0) {
+                // filter_complex に映像・音声フィルターを統合
                 const complexParts: string[] = [];
 
-                // 映像チェーン: [0:v] → filters → [vbase]
-                complexParts.push(`[0:v]${videoFilters.join(',')}[vbase]`);
+                // 映像チェーン: [0:v] → filters → [vout]
+                complexParts.push(`[0:v]${videoFilters.join(',')}[vout]`);
 
-                // PNG字幕オーバーレイチェーン: [vbase] → overlay → overlay → ... → [vout]
-                let currentVideoLabel = "vbase";
-                if (useImageOverlay && subImages.length > 0) {
-                    for (let i = 0; i < subImages.length; i++) {
-                        const si = subImages[i];
-                        const siPath = path.join(publicDir, si.path);
-                        if (!fs.existsSync(siPath)) continue;
-                        const inputIdx = subImageStartIdx + i;
-                        const outLabel = i === subImages.length - 1 ? "vout" : `vsub${i}`;
-                        complexParts.push(
-                            `[${currentVideoLabel}][${inputIdx}:v]overlay=0:0:enable='between(t,${si.start.toFixed(3)},${si.end.toFixed(3)})'[${outLabel}]`
-                        );
-                        currentVideoLabel = outLabel;
-                    }
-                } else {
-                    // PNGなし → vbase をそのまま vout にリネーム
-                    complexParts[0] = `[0:v]${videoFilters.join(',')}[vout]`;
+                // 元動画の音声
+                const mainAudioChain = afadeParts.length > 0 ? afadeParts.join(',') : 'volume=1.0';
+                complexParts.push(`[0:a]${mainAudioChain}[a0]`);
+
+                // 追加音声トラック
+                for (let i = 0; i < validAudioTracks.length; i++) {
+                    const t = validAudioTracks[i];
+                    const inputIdx = i + 1;
+                    const delayMs = Math.round((t.startTime || 0) * 1000);
+                    const vol = t.volume ?? 1.0;
+                    complexParts.push(`[${inputIdx}:a]adelay=${delayMs}|${delayMs},volume=${vol}[a${inputIdx}]`);
                 }
 
-                // 音声チェーン
-                if (validAudioTracks.length > 0) {
-                    const mainAudioChain = afadeParts.length > 0 ? afadeParts.join(',') : 'volume=1.0';
-                    complexParts.push(`[0:a]${mainAudioChain}[a0]`);
-
-                    for (let i = 0; i < validAudioTracks.length; i++) {
-                        const t = validAudioTracks[i];
-                        const inputIdx = audioStartIdx + i;
-                        const delayMs = Math.round((t.startTime || 0) * 1000);
-                        const vol = t.volume ?? 1.0;
-                        complexParts.push(`[${inputIdx}:a]adelay=${delayMs}|${delayMs},volume=${vol}[a${inputIdx}]`);
-                    }
-
-                    const amixInputs = Array.from({ length: validAudioTracks.length + 1 }, (_, i) => `[a${i}]`).join('');
-                    complexParts.push(`${amixInputs}amix=inputs=${validAudioTracks.length + 1}:duration=longest:dropout_transition=0[aout]`);
-                    mapArgs = '-map "[vout]" -map "[aout]"';
-                } else {
-                    // 音声なし → 元音声をそのまま
-                    mapArgs = '-map "[vout]" -map 0:a?';
-                    if (afadeParts.length > 0) {
-                        complexParts.push(`[0:a]${afadeParts.join(',')}[afilt]`);
-                        mapArgs = '-map "[vout]" -map "[afilt]"';
-                    }
-                }
+                // amixで全音声を合成
+                const amixInputs = Array.from({ length: validAudioTracks.length + 1 }, (_, i) => `[a${i}]`).join('');
+                complexParts.push(`${amixInputs}amix=inputs=${validAudioTracks.length + 1}:duration=longest:dropout_transition=0[aout]`);
 
                 filterArg = `-filter_complex "${complexParts.join(';')}"`;
+                mapArgs = '-map "[vout]" -map "[aout]"';
             } else {
-                // 音声トラックもPNG字幕もなし → 通常の -vf + 音声フィルター
+                // 音声トラックなし → 通常の -vf + 音声フィルター
                 filterArg = `-vf "${videoFilters.join(',')}"`;
                 if (afadeParts.length > 0) {
                     filterArg += ` -af "${afadeParts.join(',')}"`;
@@ -1168,7 +1078,6 @@ function executeRender(jobId: string, filename: string) {
                 ...trimArgs,
                 `-i "${videoPath}"`,
                 ...audioInputs,
-                ...subImageInputs,
                 filterArg,
                 mapArgs,
                 videoCodec,
@@ -1239,16 +1148,6 @@ function executeRender(jobId: string, filename: string) {
                 activeRenders--;
                 if (fs.existsSync(assPath)) {
                     try { fs.unlinkSync(assPath); } catch { }
-                }
-                // PNG字幕画像のクリーンアップ
-                for (const si of subImages) {
-                    const siFullPath = path.join(publicDir, si.path);
-                    if (fs.existsSync(siFullPath)) {
-                        try { fs.unlinkSync(siFullPath); } catch { }
-                    }
-                }
-                if (fs.existsSync(subImagesPath)) {
-                    try { fs.unlinkSync(subImagesPath); } catch { }
                 }
                 if (killed) {
                     setJobStatus(jobId, {
