@@ -281,7 +281,7 @@ export function generateASSFile(
 
     // 縦動画対応: マージンを動画幅に応じて動的に計算
     const isVertical = videoHeight > videoWidth;
-    const marginLR = Math.round(videoWidth * 0.02); // 左右マージン: 幅の2%
+    const marginLR = Math.round(videoWidth * 0.01); // 左右マージン: 幅の1%
     const marginV = Math.round(videoHeight * 0.03);  // 上下マージン: 高さの3%
 
     // フォントサイズ — PlayResX/PlayResYが出力解像度に設定されているため
@@ -342,7 +342,7 @@ ${subtitles
                 }
 
                 // テキスト折り返し: 映像幅の90%をmax-widthとして計算（プレビューCSS max-width:90%と一致）
-                const maxTextWidth = videoWidth * 0.96;
+                const maxTextWidth = videoWidth * 0.98;
                 const text = overrides ? `{${overrides}}${wrapText(sub.text, segSize, maxTextWidth)}` : wrapText(sub.text, segSize, maxTextWidth);
                 return `Dialogue: 0,${toASSTime(sub.start)},${toASSTime(sub.end)},Default,,0,0,0,,${text}`;
             })
