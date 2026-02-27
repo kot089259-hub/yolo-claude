@@ -414,6 +414,67 @@ function splitLongSegments(segments: any[], maxDuration = 3.5): any[] {
     return result.map((seg, i) => ({ ...seg, index: i }));
 }
 
+// ── セグメント後処理: 短すぎるセグメントを前後と結合 ──
+function mergeShortSegments(segments: any[], minDuration = 1.5, minChars = 8, maxMergedDuration = 5.0, maxMergedChars = 35): any[] {
+    if (segments.length <= 1) return segments;
+
+    const result: any[] = [];
+
+    for (let i = 0; i < segments.length; i++) {
+        const seg = segments[i];
+        const duration = seg.end - seg.start;
+        const text = seg.text.trim();
+
+        // 短すぎるセグメント（時間 or 文字数）を検出
+        const isTooShort = duration < minDuration || text.length < minChars;
+
+        if (!isTooShort || result.length === 0) {
+            result.push({ ...seg });
+            continue;
+        }
+
+        // 前のセグメントと結合を試みる
+        const prev = result[result.length - 1];
+        const gapToPrev = seg.start - prev.end;
+        const mergedWithPrevDuration = seg.end - prev.start;
+        const mergedWithPrevChars = prev.text.trim().length + text.length;
+
+        // 次のセグメントとの結合候補
+        const next = i + 1 < segments.length ? segments[i + 1] : null;
+        const gapToNext = next ? next.start - seg.end : Infinity;
+
+        // 前と結合: 間隔が短く、結合後の制限内
+        if (gapToPrev < 0.3 &&
+            mergedWithPrevDuration <= maxMergedDuration &&
+            mergedWithPrevChars <= maxMergedChars) {
+            prev.end = seg.end;
+            prev.text = prev.text.trim() + text;
+            continue;
+        }
+
+        // 次と結合: 次のセグメントがあり、間隔が短い場合
+        if (next && gapToNext < 0.3) {
+            const mergedWithNextDuration = next.end - seg.start;
+            const mergedWithNextChars = text.length + next.text.trim().length;
+            if (mergedWithNextDuration <= maxMergedDuration &&
+                mergedWithNextChars <= maxMergedChars) {
+                // 次のセグメントに現セグメントのテキストを前置
+                segments[i + 1] = {
+                    ...next,
+                    start: seg.start,
+                    text: text + next.text.trim(),
+                };
+                continue;
+            }
+        }
+
+        // 結合できない場合はそのまま追加
+        result.push({ ...seg });
+    }
+
+    return result.map((seg, i) => ({ ...seg, index: i }));
+}
+
 // 音声文字起こしAPI（OpenAI Whisper API）
 app.post("/api/transcribe", async (req, res) => {
     const rawFilename = req.body.filename;
@@ -515,11 +576,18 @@ app.post("/api/transcribe", async (req, res) => {
 
         console.log(`✅ OpenAI Whisper API: ${subtitles.length}個のセグメントを検出`);
 
-        // 長いセグメントを文法的な区切りで分割（3.5秒超 or 35文字超）
-        const beforeCount = subtitles.length;
+        // 1. 短すぎるセグメントを前後と結合（Whisperの過剰分割を修正）
+        const beforeMerge = subtitles.length;
+        subtitles = mergeShortSegments(subtitles);
+        if (subtitles.length !== beforeMerge) {
+            console.log(`🔗 セグメント結合: ${beforeMerge}個 → ${subtitles.length}個`);
+        }
+
+        // 2. 長いセグメントを文法的な区切りで分割（3.5秒超 or 35文字超）
+        const beforeSplit = subtitles.length;
         subtitles = splitLongSegments(subtitles);
-        if (subtitles.length !== beforeCount) {
-            console.log(`✂️ セグメント分割: ${beforeCount}個 → ${subtitles.length}個`);
+        if (subtitles.length !== beforeSplit) {
+            console.log(`✂️ セグメント分割: ${beforeSplit}個 → ${subtitles.length}個`);
         }
 
         // 一時的な音声ファイルを削除
