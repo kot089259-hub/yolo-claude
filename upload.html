@@ -2925,7 +2925,7 @@
         }
 
         html += `<div class="sub-line ${posClass}" style="${wrapperPos}">
-          <div style="
+          <div class="sub-text-inner" style="
             background:${bgRgba};
             color:${color};
             font-size:${scaledSize}px;
@@ -2936,7 +2936,11 @@
             text-align:center;
             line-height:1.4;
             text-shadow:0 ${Math.round(2 * scale)}px ${Math.round(4 * scale)}px rgba(0,0,0,0.5);
-            white-space:nowrap;
+            white-space:pre-wrap;
+            word-break:keep-all;
+            overflow-wrap:break-word;
+            max-width:90%;
+            box-sizing:border-box;
             ${stroke}
           ">${sub.text}</div>
         </div>`;
