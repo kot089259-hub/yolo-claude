@@ -982,6 +982,10 @@
       color: #ef4444;
     }
 
+    .render-progress {
+      margin-top: 6px;
+    }
+
     .thumb-preview {
       margin-top: 10px;
       max-width: 300px;
@@ -1564,8 +1568,9 @@
 
     .slot-item {
       display: flex;
+      flex-wrap: wrap;
       align-items: center;
-      gap: 8px;
+      gap: 8px 8px;
       padding: 8px 10px;
       border-radius: 8px;
       cursor: pointer;
@@ -1652,6 +1657,31 @@
     .slot-badge.error {
       background: #fee2e2;
       color: #991b1b;
+    }
+
+    .slot-progress {
+      width: 100%;
+      height: 3px;
+      background: rgba(0, 0, 0, 0.08);
+      border-radius: 2px;
+      margin-top: 4px;
+      overflow: hidden;
+    }
+
+    .slot-item.active .slot-progress {
+      background: rgba(255, 255, 255, 0.15);
+    }
+
+    .slot-progress-fill {
+      height: 100%;
+      border-radius: 2px;
+      width: 0%;
+      transition: width 0.3s ease;
+      background: #3b82f6;
+    }
+
+    .slot-item.active .slot-progress-fill {
+      background: rgba(255, 255, 255, 0.7);
     }
 
     .sidebar-actions {
@@ -2571,6 +2601,12 @@
             </div>
             <div class="edit-hint">※ プレビュー: 現在位置から5秒間 ／ 書き出し: ローカルFFmpegで全体をレンダリング</div>
             <div class="render-status" id="renderStatus"></div>
+            <div class="render-progress" id="renderProgress" style="display:none">
+              <div class="step-progress">
+                <div class="step-progress-fill" id="renderProgressFill"></div>
+              </div>
+              <div class="step-stats" id="renderProgressStats"></div>
+            </div>
             <div id="renderResult"></div>
           </div>
 
@@ -2725,6 +2761,7 @@
         },
         videoObjectURL: null,
         renderStatus: null, // null | "queued" | "rendering" | "done" | "error"
+        renderProgress: 0,
         renderJobId: null,
         renderResult: null
       };
@@ -3015,15 +3052,29 @@
         if (slot.processing) badgeHTML = `<span class="slot-badge rendering">${slot.processingLabel || '解析中'}</span>`;
         else if (slot.processingLabel === 'エラー') badgeHTML = '<span class="slot-badge error">エラー</span>';
         else if (slot.renderStatus === 'queued') badgeHTML = '<span class="slot-badge queued">待機中</span>';
-        else if (slot.renderStatus === 'rendering') badgeHTML = '<span class="slot-badge rendering">処理中</span>';
+        else if (slot.renderStatus === 'rendering') badgeHTML = `<span class="slot-badge rendering">書出${slot.renderProgress ? ' ' + slot.renderProgress + '%' : ''}</span>`;
         else if (slot.renderStatus === 'done' && slot.renderResult) badgeHTML = `<a class="slot-badge done" href="${SERVER}/${slot.renderResult.path}" download="${slot.renderResult.filename}" onclick="event.stopPropagation()" title="クリックでダウンロード">⬇完了</a>`;
         else if (slot.renderStatus === 'done') badgeHTML = '<span class="slot-badge done">完了</span>';
         else if (slot.renderStatus === 'error') badgeHTML = '<span class="slot-badge error">エラー</span>';
+
+        let progressHTML = '';
+        if (slot.renderStatus === 'rendering' && slot.renderProgress > 0) {
+          progressHTML = `<div class="slot-progress"><div class="slot-progress-fill" style="width:${slot.renderProgress}%"></div></div>`;
+        } else if (slot.processing && slot.steps) {
+          const cp = slot.steps.compress;
+          const up = slot.steps.upload;
+          if (cp.visible && cp.progress > 0 && cp.state !== 'done') {
+            progressHTML = `<div class="slot-progress"><div class="slot-progress-fill" style="width:${cp.progress}%"></div></div>`;
+          } else if (up.progress > 0 && up.state !== 'done') {
+            progressHTML = `<div class="slot-progress"><div class="slot-progress-fill" style="width:${up.progress}%"></div></div>`;
+          }
+        }
 
         return `<div class="slot-item ${isActive ? 'active' : ''}" onclick="switchSlot(${i})" title="${slot.filename || '空きスロット'}">
           <span class="slot-number">${i + 1}</span>
           <span class="slot-name ${slot.uploaded ? '' : 'empty'}">${displayName}</span>
           ${badgeHTML}
+          ${progressHTML}
         </div>`;
       }).join('');
     }
@@ -3076,17 +3127,40 @@
       // レンダリング結果があればそのスロットの結果を表示
       const renderResult = document.getElementById('renderResult');
       const renderStatus = document.getElementById('renderStatus');
+      const renderProgress = document.getElementById('renderProgress');
+      const renderProgressFill = document.getElementById('renderProgressFill');
+      const renderProgressStats = document.getElementById('renderProgressStats');
       if (slot.renderStatus === 'done' && slot.renderResult) {
         const r = slot.renderResult;
         const videoUrl = `${SERVER}/${r.path}`;
         renderStatus.className = 'render-status success';
         renderStatus.textContent = '\u2705 \u30ec\u30f3\u30c0\u30ea\u30f3\u30b0\u5b8c\u4e86\uff01';
+        renderProgress.style.display = 'none';
         renderResult.innerHTML = `
           <video controls style="width:100%;max-height:360px;border-radius:8px;margin:8px 0;background:#000;" src="${videoUrl}"></video>
           <a class="download-link" href="${videoUrl}" download="${r.filename}">\u2b07 ${r.filename} \u3092\u30c0\u30a6\u30f3\u30ed\u30fc\u30c9</a>`;
+      } else if (slot.renderStatus === 'rendering') {
+        renderStatus.className = 'render-status';
+        const pct = slot.renderProgress || 0;
+        renderStatus.textContent = `※ FFmpegでレンダリング中... ${pct}%`;
+        renderProgress.style.display = '';
+        renderProgressFill.style.width = pct + '%';
+        renderProgressStats.textContent = pct + '% 完了';
+        renderResult.innerHTML = '';
+      } else if (slot.renderStatus === 'queued') {
+        renderStatus.className = 'render-status';
+        renderStatus.textContent = '※ キュー待機中...';
+        renderProgress.style.display = 'none';
+        renderResult.innerHTML = '';
+      } else if (slot.renderStatus === 'error') {
+        renderStatus.className = 'render-status error';
+        renderStatus.textContent = '✕ レンダリングエラー';
+        renderProgress.style.display = 'none';
+        renderResult.innerHTML = '';
       } else {
         renderStatus.className = 'render-status';
         renderStatus.textContent = '';
+        renderProgress.style.display = 'none';
         renderResult.innerHTML = '';
       }
 
@@ -4398,11 +4472,17 @@ ${telopLines}`;
       const btn = document.getElementById('renderBtn');
       const status = document.getElementById('renderStatus');
       const result = document.getElementById('renderResult');
+      const renderProgress = document.getElementById('renderProgress');
+      const renderProgressFill = document.getElementById('renderProgressFill');
+      const renderProgressStats = document.getElementById('renderProgressStats');
       btn.disabled = true;
       btn.textContent = '\u23f3 \u30ec\u30f3\u30c0\u30ea\u30f3\u30b0\u4e2d...';
       status.className = 'render-status';
       status.textContent = '\u203b \u8a2d\u5b9a\u3092\u4fdd\u5b58\u4e2d...';
       result.innerHTML = '';
+      renderProgress.style.display = 'none';
+      renderProgressFill.style.width = '0%';
+      renderProgressStats.textContent = '';
 
       videoSlots[renderSlotIdx].renderStatus = 'rendering';
       renderSlotList();
@@ -4440,13 +4520,12 @@ ${telopLines}`;
           renderSlotList();
         }
 
-        // ステップ3: ステータスポーリング
-        status.textContent = '\u203b FFmpeg\u3067\u30ec\u30f3\u30c0\u30ea\u30f3\u30b0\u4e2d... \u6570\u5206\u304b\u304b\u308a\u307e\u3059';
-        let dots = 0;
-        const pollInterval = setInterval(async () => {
-          dots = (dots + 1) % 4;
-          status.textContent = '\u203b FFmpeg\u3067\u30ec\u30f3\u30c0\u30ea\u30f3\u30b0\u4e2d' + '.'.repeat(dots + 1);
-        }, 1000);
+        // ステップ3: ステータスポーリング（進捗バー付き）
+        status.textContent = '\u203b FFmpeg\u3067\u30ec\u30f3\u30c0\u30ea\u30f3\u30b0\u4e2d...';
+        renderProgress.style.display = '';
+        renderProgressFill.style.width = '0%';
+        renderProgressStats.textContent = '0% 完了';
+        let lastRenderProgress = 0;
 
         const POLL_TIMEOUT_MS = 10 * 60 * 1000; // 10分タイムアウト
         const pollStartTime = Date.now();
@@ -4456,7 +4535,6 @@ ${telopLines}`;
           const check = async () => {
             // タイムアウトチェック
             if (Date.now() - pollStartTime > POLL_TIMEOUT_MS) {
-              clearInterval(pollInterval);
               reject(new Error('レンダリングがタイムアウトしました（10分）'));
               return;
             }
@@ -4466,7 +4544,6 @@ ${telopLines}`;
                 notFoundCount++;
                 console.warn(`render-status ${statusRes.status} (${notFoundCount}回目)`);
                 if (notFoundCount >= 10) {
-                  clearInterval(pollInterval);
                   reject(new Error('ジョブステータスの取得に繰り返し失敗しました'));
                   return;
                 }
@@ -4476,22 +4553,30 @@ ${telopLines}`;
               notFoundCount = 0;
               const job = await statusRes.json();
               if (job.status === 'done') {
-                clearInterval(pollInterval);
+                renderProgressFill.style.width = '100%';
+                renderProgressStats.textContent = '100% 完了';
                 resolve(job);
               } else if (job.status === 'error') {
-                clearInterval(pollInterval);
                 reject(new Error(job.error || 'レンダリングに失敗'));
               } else {
                 if (job.status === 'rendering') {
                   videoSlots[renderSlotIdx].renderStatus = 'rendering';
+                  // 進捗バー更新
+                  const pct = job.progress || 0;
+                  if (pct > lastRenderProgress) {
+                    lastRenderProgress = pct;
+                    renderProgressFill.style.width = pct + '%';
+                    renderProgressStats.textContent = pct + '% 完了';
+                    status.textContent = `※ FFmpegでレンダリング中... ${pct}%`;
+                    videoSlots[renderSlotIdx].renderProgress = pct;
+                  }
                   renderSlotList();
                 }
-                setTimeout(check, 3000);
+                setTimeout(check, 2000);
               }
             } catch (e) {
               notFoundCount++;
               if (notFoundCount >= 10) {
-                clearInterval(pollInterval);
                 reject(new Error('サーバーとの通信に失敗しました'));
                 return;
               }
@@ -4502,9 +4587,11 @@ ${telopLines}`;
         });
 
         videoSlots[renderSlotIdx].renderStatus = 'done';
+        videoSlots[renderSlotIdx].renderProgress = 100;
         videoSlots[renderSlotIdx].renderResult = jobResult;
         renderSlotList();
 
+        renderProgress.style.display = 'none';
         status.className = 'render-status success';
         status.textContent = '\u2705 \u30ec\u30f3\u30c0\u30ea\u30f3\u30b0\u5b8c\u4e86\uff01';
         const videoUrl = `${SERVER}/${jobResult.path}`;
@@ -4514,6 +4601,7 @@ ${telopLines}`;
       } catch (error) {
         videoSlots[renderSlotIdx].renderStatus = 'error';
         renderSlotList();
+        renderProgress.style.display = 'none';
         status.className = 'render-status error';
         status.textContent = `\u274c \u30a8\u30e9\u30fc: ${error.message}`;
         console.error('render error:', error);
@@ -4636,6 +4724,7 @@ ${telopLines}`;
               const job = await res.json();
               if (job.status === 'done') {
                 slot.renderStatus = 'done';
+                slot.renderProgress = 100;
                 slot.renderResult = job;
                 doneCount++;
               } else if (job.status === 'error') {
@@ -4643,6 +4732,7 @@ ${telopLines}`;
                 doneCount++;
               } else if (job.status === 'rendering') {
                 slot.renderStatus = 'rendering';
+                slot.renderProgress = job.progress || 0;
               } else if (job.status === 'queued') {
                 slot.renderStatus = 'queued';
               }

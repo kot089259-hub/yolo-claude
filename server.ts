@@ -704,7 +704,10 @@ function setJobStatus(jobId: string, status: any) {
     try {
         const jobPath = path.join(__dirname, "public", `${jobId}.job.json`);
         fs.writeFileSync(jobPath, JSON.stringify(status));
-        console.log(`📋 ジョブ状態保存: ${jobId} → ${status.status} (${jobPath})`);
+        // 進捗更新のログは抑制（ノイズ防止）
+        if (status.progress === undefined) {
+            console.log(`📋 ジョブ状態保存: ${jobId} → ${status.status} (${jobPath})`);
+        }
     } catch (err: any) {
         console.error(`❌ ジョブ状態保存エラー: ${jobId}`, err.message);
     }
@@ -1098,10 +1101,27 @@ function executeRender(jobId: string, filename: string) {
                 child.kill("SIGKILL");
             }, FFMPEG_TIMEOUT_MS);
 
+            // FFmpeg進捗パーシング
+            const totalDuration = videoInfo.duration;
+            let lastProgressUpdate = 0;
             child.stderr?.on("data", (data: Buffer) => {
                 const str = data.toString();
                 if (str.includes("frame=") || str.includes("Error") || str.includes("error")) {
                     console.log(`  [ffmpeg] ${str.trim().slice(0, 120)}`);
+                }
+                // time=HH:MM:SS.ms から進捗を計算
+                const timeMatch = str.match(/time=(\d+):(\d+):(\d+(?:\.\d+)?)/);
+                if (timeMatch && totalDuration > 0) {
+                    const hours = parseInt(timeMatch[1]);
+                    const mins = parseInt(timeMatch[2]);
+                    const secs = parseFloat(timeMatch[3]);
+                    const currentTime = hours * 3600 + mins * 60 + secs;
+                    const progress = Math.min(99, Math.round((currentTime / totalDuration) * 100));
+                    // 頻繁なディスク書き込みを避けるため、1%以上変わった場合のみ更新
+                    if (progress > lastProgressUpdate) {
+                        lastProgressUpdate = progress;
+                        setJobStatus(jobId, { status: "rendering", progress });
+                    }
                 }
             });
 
