@@ -341,8 +341,10 @@ ${subtitles
                     overrides += `\\fad(300,0)`;
                 }
 
-                // libassのWrapStyle:0（スマート折り返し）に任せる
-                const text = overrides ? `{${overrides}}${sub.text}` : sub.text;
+                // マージン内に収まるよう手動改行 + WrapStyle:0をセーフティネットに
+                const maxTextWidth = videoWidth - marginLR * 2;
+                const wrapped = wrapText(sub.text, segSize, maxTextWidth);
+                const text = overrides ? `{${overrides}}${wrapped}` : wrapped;
                 return `Dialogue: 0,${toASSTime(sub.start)},${toASSTime(sub.end)},Default,,0,0,0,,${text}`;
             })
             .join("\n")}
