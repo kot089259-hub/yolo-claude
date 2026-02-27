@@ -2160,8 +2160,8 @@
     <div class="upload-area" id="uploadArea" onclick="document.getElementById('fileInput').click()">
       <div class="upload-icon">📁</div>
       <div class="upload-text">動画をドラッグ&ドロップ</div>
-      <div class="upload-hint">またはクリックしてファイルを選択（.mp4, .mov, .webm）</div>
-      <input type="file" id="fileInput" accept="video/*">
+      <div class="upload-hint">またはクリックしてファイルを選択（.mp4, .mov, .webm）※複数ファイル同時対応</div>
+      <input type="file" id="fileInput" accept="video/*" multiple>
     </div>
 
     <!-- 使い方ガイド -->
@@ -3095,16 +3095,37 @@
     uploadArea.addEventListener("drop", (e) => {
       e.preventDefault();
       uploadArea.classList.remove("dragover");
-      const file = e.dataTransfer.files[0];
-      if (file && file.type.startsWith("video/")) {
-        processFile(file);
-      }
+      const videoFiles = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith("video/"));
+      processMultipleFiles(videoFiles);
     });
 
     fileInput.addEventListener("change", (e) => {
-      const file = e.target.files[0];
-      if (file) processFile(file);
+      const videoFiles = Array.from(e.target.files).filter(f => f.type.startsWith("video/"));
+      processMultipleFiles(videoFiles);
+      e.target.value = '';
     });
+
+    // 複数ファイルを空きスロットに割り当てて並列処理
+    function processMultipleFiles(files) {
+      if (files.length === 0) return;
+      if (files.length === 1) {
+        processFile(files[0]);
+        return;
+      }
+      // 複数ファイル: 空きスロットに順番に割り当てて並列開始
+      const emptySlots = [];
+      for (let i = 0; i < MAX_VIDEOS; i++) {
+        if (!videoSlots[i].uploaded && !videoSlots[i].processing) emptySlots.push(i);
+      }
+      const count = Math.min(files.length, emptySlots.length);
+      if (count === 0) {
+        document.getElementById("errorMsg").textContent = "空きスロットがありません";
+        return;
+      }
+      for (let i = 0; i < count; i++) {
+        processFileToSlot(files[i], emptySlots[i]);
+      }
+    }
 
     function setStep(id, state) {
       const el = document.getElementById(id);
@@ -3126,6 +3147,8 @@
     // ── FFmpeg.wasm helpers ──
     let ffmpegInstance = null;
     let ffmpegLoaded = false;
+    // 圧縮キュー（WASMは1つずつしか処理できない）
+    let compressQueue = Promise.resolve();
 
     async function loadFFmpeg() {
       if (ffmpegLoaded && ffmpegInstance) return ffmpegInstance;
@@ -3162,16 +3185,22 @@
       return ffmpegInstance;
     }
 
-    async function compressVideo(file) {
-      const COMPRESS_THRESHOLD = 50 * 1024 * 1024; // 50MB
-      const COMPRESS_MAX = 500 * 1024 * 1024; // 500MB — WASMメモリ上限を考慮
-      if (file.size <= COMPRESS_THRESHOLD) {
-        return file;
-      }
+    // 圧縮をキューに入れて順次実行（FFmpeg.wasmは同時1つのみ）
+    function compressVideo(file) {
+      const COMPRESS_THRESHOLD = 50 * 1024 * 1024;
+      const COMPRESS_MAX = 500 * 1024 * 1024;
+      if (file.size <= COMPRESS_THRESHOLD) return Promise.resolve(file);
       if (file.size > COMPRESS_MAX) {
         console.log('File too large for WASM compression, skipping');
-        return file;
+        return Promise.resolve(file);
       }
+      // キューに追加して順番待ち
+      const result = compressQueue.then(() => compressVideoImpl(file));
+      compressQueue = result.then(() => {}, () => {}); // エラーでもキューを進める
+      return result;
+    }
+
+    async function compressVideoImpl(file) {
 
       const stepCompress = document.getElementById('stepCompress');
       stepCompress.style.display = '';
@@ -3466,6 +3495,59 @@
           const el = document.getElementById(id);
           if (el && el.classList.contains("active")) setStep(id, "error");
         });
+      }
+    }
+
+    // 指定スロットにバックグラウンドで処理（並列アップロード用）
+    // プログレスUIは操作せず、サイドバーのバッジのみ更新
+    async function processFileToSlot(file, slotIndex) {
+      const slot = videoSlots[slotIndex];
+      slot.processing = true;
+      slot.videoObjectURL = URL.createObjectURL(file);
+      renderSlotList();
+
+      try {
+        // 圧縮（FFmpeg.wasmは1つずつ — compressVideoが内部でキュー管理）
+        const fileToUpload = await compressVideo(file);
+
+        // アップロード
+        const formData = new FormData();
+        formData.append("video", fileToUpload);
+        const uploadData = await uploadWithProgress(`${SERVER}/api/upload`, formData);
+        slot.filename = uploadData.filename;
+        slot.uploaded = true;
+        if (activeSlotIndex === slotIndex) currentFilename = uploadData.filename;
+        renderSlotList();
+
+        // 文字起こし
+        const transcribeRes = await fetch(`${SERVER}/api/transcribe`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ filename: slot.filename }),
+        });
+
+        if (!transcribeRes.ok) {
+          const err = await transcribeRes.json();
+          throw new Error(err.error || "文字起こしに失敗しました");
+        }
+
+        const data = await transcribeRes.json();
+        slot.subtitles = data.subtitles;
+        slot.processing = false;
+        renderSlotList();
+
+        // アクティブスロットならUI更新
+        if (activeSlotIndex === slotIndex) {
+          syncFromSlot();
+          document.getElementById("progressSection").classList.remove("active");
+          document.getElementById("resultSection").classList.add("active");
+          displayResults();
+        }
+
+      } catch (error) {
+        slot.processing = false;
+        renderSlotList();
+        console.error(`スロット${slotIndex + 1}の処理エラー:`, error);
       }
     }
 

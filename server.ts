@@ -3,8 +3,11 @@ import cors from "cors";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
-import { execSync, spawnSync } from "child_process";
+import { exec, execSync, spawnSync } from "child_process";
+import { promisify } from "util";
 import { fileURLToPath } from "url";
+
+const execAsync = promisify(exec);
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -358,11 +361,11 @@ app.post("/api/transcribe", async (req, res) => {
     const audioPath = path.join(__dirname, "public", `${baseName}.wav`);
 
     try {
-        // 1. FFmpegで音声を抽出
+        // 1. FFmpegで音声を抽出（非同期 — 他リクエストをブロックしない）
         console.log("🎵 音声を抽出中...");
-        execSync(
+        await execAsync(
             `ffmpeg -y -i "${videoPath}" -vn -acodec pcm_s16le -ar 16000 -ac 1 "${audioPath}"`,
-            { stdio: "pipe" }
+            { maxBuffer: 10 * 1024 * 1024 }
         );
 
         const MAX_FILE_SIZE = 24 * 1024 * 1024; // 24MB（25MB制限に余裕を持たせる）
@@ -388,10 +391,10 @@ app.post("/api/transcribe", async (req, res) => {
             }));
         } else {
             // ── ファイルサイズが25MB超：分割してAPIに送信 ──
-            const durationStr = execSync(
-                `ffprobe -v error -show_entries format=duration -of csv=p=0 "${audioPath}"`,
-                { encoding: "utf-8" }
-            ).trim();
+            const { stdout: durationStdout } = await execAsync(
+                `ffprobe -v error -show_entries format=duration -of csv=p=0 "${audioPath}"`
+            );
+            const durationStr = durationStdout.trim();
             const totalDuration = parseFloat(durationStr);
 
             const numChunks = Math.ceil(audioFileSize / MAX_FILE_SIZE);
@@ -411,9 +414,9 @@ app.post("/api/transcribe", async (req, res) => {
                 const startTime = i * chunkDuration;
                 const chunkPath = path.join(chunkDir, `chunk_${i}.wav`);
 
-                execSync(
+                await execAsync(
                     `ffmpeg -y -i "${audioPath}" -ss ${startTime} -t ${chunkDuration} -acodec pcm_s16le -ar 16000 -ac 1 "${chunkPath}"`,
-                    { stdio: "pipe" }
+                    { maxBuffer: 10 * 1024 * 1024 }
                 );
 
                 console.log(`  📤 チャンク ${i + 1}/${numChunks} を送信中... (${startTime}秒〜)`);
