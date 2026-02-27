@@ -294,7 +294,7 @@ Title: Video Subtitles
 ScriptType: v4.00+
 PlayResX: ${videoWidth}
 PlayResY: ${videoHeight}
-WrapStyle: 2
+WrapStyle: 0
 
 [V4+ Styles]
 Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
@@ -341,9 +341,8 @@ ${subtitles
                     overrides += `\\fad(300,0)`;
                 }
 
-                // テキスト折り返し: 映像幅の90%をmax-widthとして計算（プレビューCSS max-width:90%と一致）
-                const maxTextWidth = videoWidth * 0.98;
-                const text = overrides ? `{${overrides}}${wrapText(sub.text, segSize, maxTextWidth)}` : wrapText(sub.text, segSize, maxTextWidth);
+                // libassのWrapStyle:0（スマート折り返し）に任せる
+                const text = overrides ? `{${overrides}}${sub.text}` : sub.text;
                 return `Dialogue: 0,${toASSTime(sub.start)},${toASSTime(sub.end)},Default,,0,0,0,,${text}`;
             })
             .join("\n")}

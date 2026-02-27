@@ -2976,15 +2976,6 @@
           posClass = pos;
         }
 
-        // ASS側と同じロジックでテキストを折り返し（renderW基準の98%）
-        const maxTextWidthPx = renderW * 0.98;
-        const wrappedText = wrapSubText(sub.text, size, maxTextWidthPx);
-        const displayText = wrappedText.split('\n').map(line => {
-          const span = document.createElement('span');
-          span.textContent = line;
-          return span.textContent;
-        }).join('<br>');
-
         html += `<div class="sub-line ${posClass}" style="${wrapperPos}">
           <div class="sub-text-inner" style="
             background:${bgRgba};
@@ -2998,10 +2989,12 @@
             line-height:1.4;
             text-shadow:0 ${Math.round(2 * scale)}px ${Math.round(4 * scale)}px rgba(0,0,0,0.5);
             white-space:pre-wrap;
+            word-break:keep-all;
+            overflow-wrap:break-word;
             max-width:98%;
             box-sizing:border-box;
             ${stroke}
-          ">${wrappedText}</div>
+          ">${sub.text}</div>
         </div>`;
       });
 
