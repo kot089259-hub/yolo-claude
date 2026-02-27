@@ -2727,6 +2727,7 @@
         redoStack: [],
         uploaded: false,
         processing: false, // アップロード/文字起こし処理中フラグ
+        processingLabel: '', // 処理段階の表示テキスト（例: "圧縮 45%", "アップロード中", "文字起こし中"）
         videoObjectURL: null,
         renderStatus: null, // null | "queued" | "rendering" | "done" | "error"
         renderJobId: null,
@@ -2914,7 +2915,7 @@
         const name = slot.uploaded ? slot.filename.replace(/^upload_\d+/, '動画').replace(/\.\w+$/, '') : '';
         const displayName = slot.uploaded ? `動画${i + 1}` : '(空)';
         let badgeHTML = '';
-        if (slot.processing) badgeHTML = '<span class="slot-badge rendering">解析中</span>';
+        if (slot.processing) badgeHTML = `<span class="slot-badge rendering">${slot.processingLabel || '解析中'}</span>`;
         else if (slot.renderStatus === 'queued') badgeHTML = '<span class="slot-badge queued">待機中</span>';
         else if (slot.renderStatus === 'rendering') badgeHTML = '<span class="slot-badge rendering">処理中</span>';
         else if (slot.renderStatus === 'done' && slot.renderResult) badgeHTML = `<a class="slot-badge done" href="${SERVER}/${slot.renderResult.path}" download="${slot.renderResult.filename}" onclick="event.stopPropagation()" title="クリックでダウンロード">⬇完了</a>`;
@@ -3185,7 +3186,8 @@
     }
 
     // 圧縮をキューに入れて順次実行（FFmpeg.wasmは同時1つのみ）
-    function compressVideo(file) {
+    // onProgress: (pct: number) => void — 進捗コールバック（バックグラウンド処理用）
+    function compressVideo(file, onProgress) {
       const COMPRESS_THRESHOLD = 50 * 1024 * 1024;
       const COMPRESS_MAX = 500 * 1024 * 1024;
       if (file.size <= COMPRESS_THRESHOLD) return Promise.resolve(file);
@@ -3194,12 +3196,12 @@
         return Promise.resolve(file);
       }
       // キューに追加して順番待ち
-      const result = compressQueue.then(() => compressVideoImpl(file));
+      const result = compressQueue.then(() => compressVideoImpl(file, onProgress));
       compressQueue = result.then(() => {}, () => {}); // エラーでもキューを進める
       return result;
     }
 
-    async function compressVideoImpl(file) {
+    async function compressVideoImpl(file, onProgress) {
 
       const stepCompress = document.getElementById('stepCompress');
       stepCompress.style.display = '';
@@ -3218,6 +3220,7 @@
           const pct = Math.min(99, Math.max(0, Math.round(progress * 100)));
           progressFill.style.width = pct + '%';
           statsEl.textContent = `${pct}% 完了`;
+          if (onProgress) onProgress(pct);
         });
 
         const inputName = 'input' + (file.name.endsWith('.mov') ? '.mov' : '.mp4');
@@ -3454,9 +3457,16 @@
 
       try {
         // Step 1: Compress (if > 50MB)
-        const fileToUpload = await compressVideo(file);
+        videoSlots[targetSlot].processingLabel = '圧縮中';
+        renderSlotList();
+        const fileToUpload = await compressVideo(file, (pct) => {
+          videoSlots[targetSlot].processingLabel = `圧縮 ${pct}%`;
+          renderSlotList();
+        });
 
         // Step 2: Upload with progress
+        videoSlots[targetSlot].processingLabel = 'アップロード中';
+        renderSlotList();
         setStep("stepUpload", "active");
         document.getElementById("uploadDetail").textContent =
           `${fileToUpload.name} (${(fileToUpload.size / 1024 / 1024).toFixed(1)}MB)`;
@@ -3469,6 +3479,8 @@
         setStep("stepUpload", "done");
 
         // Step 3: Transcribe
+        videoSlots[targetSlot].processingLabel = '文字起こし中';
+        renderSlotList();
         setStep("stepExtract", "active");
         setStep("stepTranscribe", "active");
         const transcribeRes = await fetch(`${SERVER}/api/transcribe`, {
@@ -3487,6 +3499,7 @@
         setStep("stepTranscribe", "done");
         videoSlots[targetSlot].subtitles = data.subtitles;
         videoSlots[targetSlot].processing = false;
+        videoSlots[targetSlot].processingLabel = '';
         renderSlotList();
 
         // アクティブスロットが変わっていなければグローバル変数を同期してUIを更新
@@ -3528,9 +3541,16 @@
 
       try {
         // 圧縮（FFmpeg.wasmは1つずつ — compressVideoが内部でキュー管理）
-        const fileToUpload = await compressVideo(file);
+        slot.processingLabel = '圧縮待ち';
+        renderSlotList();
+        const fileToUpload = await compressVideo(file, (pct) => {
+          slot.processingLabel = `圧縮 ${pct}%`;
+          renderSlotList();
+        });
 
         // アップロード
+        slot.processingLabel = 'アップロード中';
+        renderSlotList();
         const formData = new FormData();
         formData.append("video", fileToUpload);
         const uploadData = await uploadWithProgress(`${SERVER}/api/upload`, formData);
@@ -3540,6 +3560,8 @@
         renderSlotList();
 
         // 文字起こし
+        slot.processingLabel = '文字起こし中';
+        renderSlotList();
         const transcribeRes = await fetch(`${SERVER}/api/transcribe`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -3554,6 +3576,7 @@
         const data = await transcribeRes.json();
         slot.subtitles = data.subtitles;
         slot.processing = false;
+        slot.processingLabel = '';
         renderSlotList();
 
         // アクティブスロットならUI更新
