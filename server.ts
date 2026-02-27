@@ -575,13 +575,13 @@ app.post("/api/transcribe", async (req, res) => {
         }
 
         console.log(`✅ OpenAI Whisper API: ${subtitles.length}個のセグメントを検出`);
+        console.log(`📋 Whisper生データ(先頭5件):`, subtitles.slice(0, 5).map((s: any) => `[${s.start}-${s.end}] "${s.text}" (${s.text.length}字, ${(s.end-s.start).toFixed(1)}s)`));
 
         // 1. 短すぎるセグメントを前後と結合（Whisperの過剰分割を修正）
         const beforeMerge = subtitles.length;
         subtitles = mergeShortSegments(subtitles);
-        if (subtitles.length !== beforeMerge) {
-            console.log(`🔗 セグメント結合: ${beforeMerge}個 → ${subtitles.length}個`);
-        }
+        console.log(`🔗 セグメント結合: ${beforeMerge}個 → ${subtitles.length}個`);
+        console.log(`📋 結合後(先頭5件):`, subtitles.slice(0, 5).map((s: any) => `[${s.start}-${s.end}] "${s.text}" (${s.text.length}字, ${(s.end-s.start).toFixed(1)}s)`));
 
         // 2. 長いセグメントを文法的な区切りで分割（3.5秒超 or 35文字超）
         const beforeSplit = subtitles.length;
