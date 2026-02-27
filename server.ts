@@ -901,19 +901,23 @@ function executeRender(jobId: string, filename: string) {
             }
 
             // ★ FFmpegコマンド（1080p + 字幕）— HWエンコーダ優先
+            // VideoToolbox: -q:v 1(最高品質)〜100(最低品質)、35=高品質
+            const hwAccelDecode = useHWEncoder ? "-hwaccel videotoolbox" : "";
             const videoCodec = useHWEncoder
-                ? `-c:v ${hwEncoderName} -q:v 65 -allow_sw 1`
-                : "-c:v libx264 -preset ultrafast -crf 20";
+                ? `-c:v ${hwEncoderName} -q:v 35 -allow_sw 1`
+                : "-c:v libx264 -preset medium -crf 18";
             const command = [
                 "ffmpeg -y",
+                hwAccelDecode,
+                "-threads 0",
                 ...trimArgs,
                 `-i "${videoPath}"`,
                 `-vf "${scaleFilter}${assFilter}"`,
                 videoCodec,
-                "-c:a aac -b:a 128k",
+                "-c:a aac -b:a 192k",
                 "-movflags +faststart",
                 `"${outputPath}"`,
-            ].join(" ");
+            ].filter(Boolean).join(" ");
 
             console.log(`🎬 FFmpeg実行開始 (job: ${jobId})`);
             console.log(`   CMD: ${command.slice(0, 200)}...`);
