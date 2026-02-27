@@ -251,6 +251,12 @@ function wrapText(text: string, fontSize: number, maxWidthPx: number, bold = fal
         remaining = remaining.slice(breakAt);
     }
 
+    // 最終行が短すぎる場合（3文字以下）は前の行に結合
+    if (lines.length >= 2 && lines[lines.length - 1].length <= 3) {
+        const last = lines.pop()!;
+        lines[lines.length - 1] += last;
+    }
+
     return lines.join(String.raw`\N`);
 }
 
@@ -285,7 +291,7 @@ export function generateASSFile(
 
     // 縦動画対応: マージンを動画幅に応じて動的に計算
     const isVertical = videoHeight > videoWidth;
-    const marginLR = Math.round(videoWidth * 0.02); // 左右マージン: 幅の2%
+    const marginLR = Math.round(videoWidth * 0.01); // 左右マージン: 幅の1%
     const marginV = Math.round(videoHeight * 0.03);  // 上下マージン: 高さの3%
 
     // フォントサイズ — PlayResX/PlayResYが出力解像度に設定されているため
