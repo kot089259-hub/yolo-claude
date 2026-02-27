@@ -2728,6 +2728,13 @@
         uploaded: false,
         processing: false, // アップロード/文字起こし処理中フラグ
         processingLabel: '', // 処理段階の表示テキスト（例: "圧縮 45%", "アップロード中", "文字起こし中"）
+        // 各ステップの状態を個別に保持（進捗セクションの復元用）
+        steps: {
+          compress: { state: 'pending', detail: '', progress: 0, stats: '', visible: false },
+          upload:   { state: 'pending', detail: '', progress: 0, stats: '' },
+          extract:  { state: 'pending' },
+          transcribe: { state: 'pending' }
+        },
         videoObjectURL: null,
         renderStatus: null, // null | "queued" | "rendering" | "done" | "error"
         renderJobId: null,
@@ -2745,6 +2752,42 @@
     var editSettings = videoSlots[0].editSettings;
     var undoStack = [];
     var redoStack = [];
+
+    // スロットのステップ状態を更新し、アクティブスロットならDOMにも反映
+    function updateSlotStep(slotIndex, stepName, updates) {
+      const slot = videoSlots[slotIndex];
+      Object.assign(slot.steps[stepName], updates);
+      if (slotIndex === activeSlotIndex) {
+        renderStepToDOM(stepName, slot.steps[stepName]);
+      }
+    }
+
+    // ステップ状態をDOMに反映
+    function renderStepToDOM(stepName, stepData) {
+      const idMap = { compress: 'stepCompress', upload: 'stepUpload', extract: 'stepExtract', transcribe: 'stepTranscribe' };
+      const stepEl = document.getElementById(idMap[stepName]);
+      if (!stepEl) return;
+
+      if (stepName === 'compress') {
+        stepEl.style.display = stepData.visible ? '' : 'none';
+        document.getElementById('compressDetail').textContent = stepData.detail || '';
+        document.getElementById('compressProgressFill').style.width = (stepData.progress || 0) + '%';
+        document.getElementById('compressStats').textContent = stepData.stats || '';
+      } else if (stepName === 'upload') {
+        document.getElementById('uploadDetail').textContent = stepData.detail || '';
+        document.getElementById('uploadProgressFill').style.width = (stepData.progress || 0) + '%';
+        document.getElementById('uploadStats').textContent = stepData.stats || '';
+      }
+      setStep(idMap[stepName], stepData.state === 'pending' ? 'pending' : stepData.state);
+    }
+
+    // 全ステップをDOMに反映（スロット切り替え時用）
+    function renderAllStepsToDOM(slotIndex) {
+      const slot = videoSlots[slotIndex];
+      for (const stepName of ['compress', 'upload', 'extract', 'transcribe']) {
+        renderStepToDOM(stepName, slot.steps[stepName]);
+      }
+    }
 
     // スロット ↔ グローバル変数の同期
     function syncToSlot() {
@@ -2958,10 +3001,11 @@
         videoPreview.style.display = 'none';
       }
 
-      // progressSectionは現在のスロットが処理中の場合のみ表示
+      // progressSection: 処理中スロットに切り替えたらステップ状態をDOMに復元
       const progressSection = document.getElementById('progressSection');
       if (slot.processing) {
         progressSection.classList.add('active');
+        renderAllStepsToDOM(index);
       } else {
         progressSection.classList.remove('active');
       }
@@ -3127,20 +3171,29 @@
       }
     }
 
+    const defaultStepIcons = {
+      stepCompress: '📦', stepUpload: '⬆️', stepExtract: '🎵', stepTranscribe: '🤖'
+    };
+
     function setStep(id, state) {
       const el = document.getElementById(id);
       if (!el) return;
-      el.className = `step ${state}`;
-      if (state === "active") {
+      const icon = el.querySelector(".step-icon");
+      if (state === "pending") {
+        el.className = 'step';
+        icon.textContent = defaultStepIcons[id] || '';
+      } else if (state === "active") {
+        el.className = 'step active';
         el.style.display = "";
-        const icon = el.querySelector(".step-icon");
         icon.innerHTML = '<div class="spinner"></div>';
       } else if (state === "done") {
-        const icon = el.querySelector(".step-icon");
+        el.className = 'step done';
         icon.textContent = "✅";
       } else if (state === "error") {
-        const icon = el.querySelector(".step-icon");
+        el.className = 'step error';
         icon.textContent = "❌";
+      } else {
+        el.className = `step ${state}`;
       }
     }
 
@@ -3187,7 +3240,7 @@
 
     // 圧縮をキューに入れて順次実行（FFmpeg.wasmは同時1つのみ）
     // onProgress: (pct: number) => void — 進捗コールバック（バックグラウンド処理用）
-    function compressVideo(file, onProgress, silent) {
+    function compressVideo(file, slotIndex) {
       const COMPRESS_THRESHOLD = 50 * 1024 * 1024;
       const COMPRESS_MAX = 500 * 1024 * 1024;
       if (file.size <= COMPRESS_THRESHOLD) return Promise.resolve(file);
@@ -3196,34 +3249,36 @@
         return Promise.resolve(file);
       }
       // キューに追加して順番待ち
-      const result = compressQueue.then(() => compressVideoImpl(file, onProgress, silent));
+      const result = compressQueue.then(() => compressVideoImpl(file, slotIndex));
       compressQueue = result.then(() => {}, () => {}); // エラーでもキューを進める
       return result;
     }
 
-    async function compressVideoImpl(file, onProgress, silent) {
+    // 現在アクティブなFFmpeg progressリスナー（蓄積防止用）
+    let activeFFmpegProgressHandler = null;
 
-      if (!silent) {
-        const stepCompress = document.getElementById('stepCompress');
-        stepCompress.style.display = '';
-        setStep('stepCompress', 'active');
-        document.getElementById('compressDetail').textContent =
-          `${file.name} (${(file.size / 1024 / 1024).toFixed(1)}MB) → 圧縮中...`;
-      }
-
-      const progressFill = !silent ? document.getElementById('compressProgressFill') : null;
-      const statsEl = !silent ? document.getElementById('compressStats') : null;
+    async function compressVideoImpl(file, slotIndex) {
+      const sizeMB = (file.size / 1024 / 1024).toFixed(1);
+      updateSlotStep(slotIndex, 'compress', {
+        state: 'active', visible: true,
+        detail: `${file.name} (${sizeMB}MB) → 圧縮中...`,
+        progress: 0, stats: ''
+      });
 
       try {
         const ffmpeg = await loadFFmpeg();
 
-        // Track progress via progress event
-        ffmpeg.on('progress', ({ progress }) => {
+        // 古いリスナーを除去してから新しいリスナーを登録（蓄積防止）
+        if (activeFFmpegProgressHandler) {
+          ffmpeg.off('progress', activeFFmpegProgressHandler);
+        }
+        activeFFmpegProgressHandler = ({ progress }) => {
           const pct = Math.min(99, Math.max(0, Math.round(progress * 100)));
-          if (progressFill) progressFill.style.width = pct + '%';
-          if (statsEl) statsEl.textContent = `${pct}% 完了`;
-          if (onProgress) onProgress(pct);
-        });
+          updateSlotStep(slotIndex, 'compress', { progress: pct, stats: `${pct}% 完了` });
+          videoSlots[slotIndex].processingLabel = `圧縮 ${pct}%`;
+          renderSlotList();
+        };
+        ffmpeg.on('progress', activeFFmpegProgressHandler);
 
         const inputName = 'input' + (file.name.endsWith('.mov') ? '.mov' : '.mp4');
         const outputName = 'compressed.mp4';
@@ -3253,24 +3308,19 @@
 
         // Use compressed only if smaller
         if (compressedBlob.size >= file.size) {
-          if (!silent) {
-            document.getElementById('compressDetail').textContent =
-              `圧縮後のサイズが元より大きいため、元ファイルを使用します`;
-            progressFill.style.width = '100%';
-            statsEl.textContent = '';
-            setStep('stepCompress', 'done');
-          }
+          updateSlotStep(slotIndex, 'compress', {
+            state: 'done', progress: 100, stats: '',
+            detail: '圧縮後のサイズが元より大きいため、元ファイルを使用します'
+          });
           return file;
         }
 
+        const compSizeMB = (compressedBlob.size / 1024 / 1024).toFixed(1);
         const ratio = ((1 - compressedBlob.size / file.size) * 100).toFixed(0);
-        if (!silent) {
-          document.getElementById('compressDetail').textContent =
-            `${(file.size / 1024 / 1024).toFixed(1)}MB → ${(compressedBlob.size / 1024 / 1024).toFixed(1)}MB (${ratio}%削減)`;
-          progressFill.style.width = '100%';
-          statsEl.textContent = '圧縮完了';
-          setStep('stepCompress', 'done');
-        }
+        updateSlotStep(slotIndex, 'compress', {
+          state: 'done', progress: 100, stats: '圧縮完了',
+          detail: `${sizeMB}MB → ${compSizeMB}MB (${ratio}%削減)`
+        });
 
         const compressedFile = new File([compressedBlob], file.name.replace(/\.[^.]+$/, '.mp4'), { type: 'video/mp4' });
         return compressedFile;
@@ -3278,41 +3328,38 @@
       } catch (err) {
         console.error('Compression failed:', err);
         const reason = err && err.message ? err.message : String(err);
-        if (!silent) {
-          document.getElementById('compressDetail').textContent =
-            `圧縮スキップ — 元ファイルでアップロードします`;
-          statsEl.textContent = `(${reason.slice(0, 80)})`;
-          setStep('stepCompress', 'done');
-        }
+        updateSlotStep(slotIndex, 'compress', {
+          state: 'done',
+          detail: '圧縮スキップ — 元ファイルでアップロードします',
+          stats: `(${reason.slice(0, 80)})`
+        });
         return file; // fallback to original
       }
     }
 
-    function uploadWithProgress(url, formData, silent) {
+    function uploadWithProgress(url, formData, slotIndex) {
       return new Promise((resolve, reject) => {
         const xhr = new XMLHttpRequest();
-        const progressFill = !silent ? document.getElementById('uploadProgressFill') : null;
-        const statsEl = !silent ? document.getElementById('uploadStats') : null;
-
         let startTime = Date.now();
 
         xhr.upload.addEventListener('progress', (e) => {
           if (e.lengthComputable) {
             const pct = Math.round((e.loaded / e.total) * 100);
-            if (progressFill) progressFill.style.width = pct + '%';
-
             const elapsed = (Date.now() - startTime) / 1000;
             const speed = e.loaded / elapsed;
             const remaining = elapsed > 0 ? (e.total - e.loaded) / speed : 0;
-
-            if (statsEl) statsEl.textContent = `${pct}% | ${formatSpeed(speed)} | 残り約${formatTime(remaining)}`;
+            updateSlotStep(slotIndex, 'upload', {
+              progress: pct,
+              stats: `${pct}% | ${formatSpeed(speed)} | 残り約${formatTime(remaining)}`
+            });
           }
         });
 
         xhr.addEventListener('load', () => {
           if (xhr.status >= 200 && xhr.status < 300) {
-            if (progressFill) progressFill.style.width = '100%';
-            if (statsEl) statsEl.textContent = 'アップロード完了';
+            updateSlotStep(slotIndex, 'upload', {
+              state: 'done', progress: 100, stats: 'アップロード完了'
+            });
             try {
               resolve(JSON.parse(xhr.responseText));
             } catch (e) {
@@ -3448,59 +3495,50 @@
       document.getElementById("progressSection").classList.add("active");
       document.getElementById("resultSection").classList.remove("active");
       document.getElementById("errorMsg").textContent = "";
-      renderSlotList();
 
-      // Reset progress UI — 全ステップを初期状態に戻す
-      document.getElementById('stepCompress').style.display = 'none';
-      document.getElementById('stepCompress').className = 'step';
-      document.getElementById('stepCompress').querySelector('.step-icon').textContent = '📦';
-      document.getElementById('compressDetail').textContent = '';
-      document.getElementById('compressProgressFill').style.width = '0%';
-      document.getElementById('compressStats').textContent = '';
-      document.getElementById('stepUpload').className = 'step';
-      document.getElementById('stepUpload').querySelector('.step-icon').textContent = '⬆️';
-      document.getElementById('uploadProgressFill').style.width = '0%';
-      document.getElementById('uploadStats').textContent = '';
-      document.getElementById('uploadDetail').textContent = `${file.name} (${(file.size / 1024 / 1024).toFixed(1)}MB)`;
-      document.getElementById('stepExtract').className = 'step';
-      document.getElementById('stepExtract').querySelector('.step-icon').textContent = '🎵';
-      document.getElementById('stepTranscribe').className = 'step';
-      document.getElementById('stepTranscribe').querySelector('.step-icon').textContent = '🤖';
+      // スロットのステップ状態を初期化してDOMに反映
+      const sizeMB = (file.size / 1024 / 1024).toFixed(1);
+      videoSlots[targetSlot].steps = {
+        compress: { state: 'pending', detail: '', progress: 0, stats: '', visible: false },
+        upload:   { state: 'pending', detail: `${file.name} (${sizeMB}MB)`, progress: 0, stats: '' },
+        extract:  { state: 'pending' },
+        transcribe: { state: 'pending' }
+      };
+      renderAllStepsToDOM(targetSlot);
+      renderSlotList();
 
       try {
         // Step 1: Compress (if > 50MB)
         videoSlots[targetSlot].processingLabel = '圧縮中';
         renderSlotList();
-        const fileToUpload = await compressVideo(file, (pct) => {
-          videoSlots[targetSlot].processingLabel = `圧縮 ${pct}%`;
-          renderSlotList();
-        });
+        const fileToUpload = await compressVideo(file, targetSlot);
 
         // Step 2: Upload with progress
         videoSlots[targetSlot].processingLabel = 'アップロード中';
         renderSlotList();
-        setStep("stepUpload", "active");
-        document.getElementById("uploadDetail").textContent =
-          `${fileToUpload.name} (${(fileToUpload.size / 1024 / 1024).toFixed(1)}MB)`;
+        const uploadSizeMB = (fileToUpload.size / 1024 / 1024).toFixed(1);
+        updateSlotStep(targetSlot, 'upload', {
+          state: 'active',
+          detail: `${fileToUpload.name} (${uploadSizeMB}MB)`
+        });
         const formData = new FormData();
         formData.append("video", fileToUpload);
-        const uploadData = await uploadWithProgress(`${SERVER}/api/upload`, formData);
+        const uploadData = await uploadWithProgress(`${SERVER}/api/upload`, formData, targetSlot);
         videoSlots[targetSlot].filename = uploadData.filename;
         videoSlots[targetSlot].uploaded = true;
         if (activeSlotIndex === targetSlot) currentFilename = uploadData.filename;
-        setStep("stepUpload", "done");
 
         // Step 3: Transcribe
         videoSlots[targetSlot].processingLabel = '文字起こし中';
         renderSlotList();
-        setStep("stepExtract", "active");
-        setStep("stepTranscribe", "active");
+        updateSlotStep(targetSlot, 'extract', { state: 'active' });
+        updateSlotStep(targetSlot, 'transcribe', { state: 'active' });
         const transcribeRes = await fetch(`${SERVER}/api/transcribe`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ filename: videoSlots[targetSlot].filename }),
         });
-        setStep("stepExtract", "done");
+        updateSlotStep(targetSlot, 'extract', { state: 'done' });
 
         if (!transcribeRes.ok) {
           const err = await transcribeRes.json();
@@ -3508,7 +3546,7 @@
         }
 
         const data = await transcribeRes.json();
-        setStep("stepTranscribe", "done");
+        updateSlotStep(targetSlot, 'transcribe', { state: 'done' });
         videoSlots[targetSlot].subtitles = data.subtitles;
         videoSlots[targetSlot].processing = false;
         videoSlots[targetSlot].processingLabel = '';
@@ -3524,12 +3562,16 @@
 
       } catch (error) {
         videoSlots[targetSlot].processing = false;
+        videoSlots[targetSlot].processingLabel = '';
         renderSlotList();
-        document.getElementById("errorMsg").textContent = `エラー: ${error.message}`;
-        ["stepCompress", "stepUpload", "stepExtract", "stepTranscribe"].forEach((id) => {
-          const el = document.getElementById(id);
-          if (el && el.classList.contains("active")) setStep(id, "error");
-        });
+        if (activeSlotIndex === targetSlot) {
+          document.getElementById("errorMsg").textContent = `エラー: ${error.message}`;
+        }
+        for (const stepName of ['compress', 'upload', 'extract', 'transcribe']) {
+          if (videoSlots[targetSlot].steps[stepName].state === 'active') {
+            updateSlotStep(targetSlot, stepName, { state: 'error' });
+          }
+        }
       }
     }
 
@@ -3539,9 +3581,18 @@
       const slot = videoSlots[slotIndex];
       slot.processing = true;
       slot.videoObjectURL = URL.createObjectURL(file);
+
+      // スロットのステップ状態を初期化
+      const sizeMB = (file.size / 1024 / 1024).toFixed(1);
+      slot.steps = {
+        compress: { state: 'pending', detail: '', progress: 0, stats: '', visible: false },
+        upload:   { state: 'pending', detail: `${file.name} (${sizeMB}MB)`, progress: 0, stats: '' },
+        extract:  { state: 'pending' },
+        transcribe: { state: 'pending' }
+      };
       renderSlotList();
 
-      // アクティブスロットなら動画プレビューを即座に表示
+      // アクティブスロットなら動画プレビューとステップ表示を即座に反映
       if (activeSlotIndex === slotIndex) {
         const previewVideo = document.getElementById('previewVideo');
         const videoPreview = document.getElementById('videoPreview');
@@ -3549,23 +3600,26 @@
         videoPreview.style.display = 'block';
         document.getElementById("progressSection").classList.add("active");
         document.getElementById("resultSection").classList.remove("active");
+        renderAllStepsToDOM(slotIndex);
       }
 
       try {
         // 圧縮（FFmpeg.wasmは1つずつ — compressVideoが内部でキュー管理）
         slot.processingLabel = '圧縮待ち';
         renderSlotList();
-        const fileToUpload = await compressVideo(file, (pct) => {
-          slot.processingLabel = `圧縮 ${pct}%`;
-          renderSlotList();
-        }, true);
+        const fileToUpload = await compressVideo(file, slotIndex);
 
         // アップロード
         slot.processingLabel = 'アップロード中';
         renderSlotList();
+        const uploadSizeMB = (fileToUpload.size / 1024 / 1024).toFixed(1);
+        updateSlotStep(slotIndex, 'upload', {
+          state: 'active',
+          detail: `${fileToUpload.name} (${uploadSizeMB}MB)`
+        });
         const formData = new FormData();
         formData.append("video", fileToUpload);
-        const uploadData = await uploadWithProgress(`${SERVER}/api/upload`, formData, true);
+        const uploadData = await uploadWithProgress(`${SERVER}/api/upload`, formData, slotIndex);
         slot.filename = uploadData.filename;
         slot.uploaded = true;
         if (activeSlotIndex === slotIndex) currentFilename = uploadData.filename;
@@ -3574,11 +3628,14 @@
         // 文字起こし
         slot.processingLabel = '文字起こし中';
         renderSlotList();
+        updateSlotStep(slotIndex, 'extract', { state: 'active' });
+        updateSlotStep(slotIndex, 'transcribe', { state: 'active' });
         const transcribeRes = await fetch(`${SERVER}/api/transcribe`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ filename: slot.filename }),
         });
+        updateSlotStep(slotIndex, 'extract', { state: 'done' });
 
         if (!transcribeRes.ok) {
           const err = await transcribeRes.json();
@@ -3586,6 +3643,7 @@
         }
 
         const data = await transcribeRes.json();
+        updateSlotStep(slotIndex, 'transcribe', { state: 'done' });
         slot.subtitles = data.subtitles;
         slot.processing = false;
         slot.processingLabel = '';
@@ -3601,8 +3659,14 @@
 
       } catch (error) {
         slot.processing = false;
+        slot.processingLabel = '';
         renderSlotList();
         console.error(`スロット${slotIndex + 1}の処理エラー:`, error);
+        for (const stepName of ['compress', 'upload', 'extract', 'transcribe']) {
+          if (slot.steps[stepName].state === 'active') {
+            updateSlotStep(slotIndex, stepName, { state: 'error' });
+          }
+        }
       }
     }
 
