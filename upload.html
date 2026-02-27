@@ -1293,20 +1293,14 @@
     .subtitle-overlay .sub-line {
       position: absolute;
       left: 50%;
-      transform: translateX(-50%);
-      max-width: 90%;
-      text-align: center;
-      padding: 4px 12px;
-      border-radius: 4px;
-      font-family: 'Noto Sans JP', sans-serif;
-      white-space: pre-wrap;
-      word-break: break-word;
-      line-height: 1.4;
-      transition: opacity 0.2s;
+      width: 100%;
+      display: flex;
+      justify-content: center;
+      transform: translate(-50%, -50%);
     }
 
     .subtitle-overlay .sub-line.bottom {
-      bottom: 8%;
+      top: 90%;
     }
 
     .subtitle-overlay .sub-line.top {
@@ -1315,7 +1309,6 @@
 
     .subtitle-overlay .sub-line.center {
       top: 50%;
-      transform: translate(-50%, -50%);
     }
 
     .subtitle-overlay .telop-line {
@@ -1436,9 +1429,11 @@
     }
 
     .style-preview-text {
-      padding: 6px 16px;
-      border-radius: 8px;
+      padding: 14px 32px;
+      border-radius: 10px;
       text-align: center;
+      line-height: 1.4;
+      white-space: nowrap;
       transition: all 0.15s;
     }
 
@@ -2821,7 +2816,7 @@
       const t = video.currentTime;
       let html = '';
 
-      // 字幕表示
+      // 字幕表示（Remotion SubtitleOverlay.tsx と同じスタイルで描画）
       const activeSubs = currentSubtitles.filter(s => t >= s.start && t <= s.end);
       activeSubs.forEach(sub => {
         const font = sub.fontFamily || currentStyle.fontFamily;
@@ -2831,26 +2826,48 @@
         const opacity = currentStyle.bgOpacity;
         const bold = (sub.bold !== undefined ? sub.bold : currentStyle.bold) ? 'bold' : 'normal';
         const pos = currentStyle.position || 'bottom';
+        const outlineW = sub.outlineWidth || currentStyle.outlineWidth || 0;
+        const outlineC = sub.outlineColor || currentStyle.outlineColor || '#000000';
 
-        // ビデオサイズに応じてフォントサイズをスケール
+        // ビデオサイズに応じて全サイズをスケール（1920px基準 = レンダリングと同じ）
         const videoEl = video.getBoundingClientRect();
-        const scale = videoEl.width / 1920; // 1920基準でスケール
+        const scale = videoEl.width / 1920;
         const scaledSize = Math.max(12, Math.round(size * scale));
+        const scaledPadV = Math.round(14 * scale);
+        const scaledPadH = Math.round(32 * scale);
+        const scaledRadius = Math.round(10 * scale);
+        const scaledOutline = Math.round(outlineW * scale);
 
-        const posClass = (sub.posX !== undefined && sub.posY !== undefined) ? '' : pos;
-        let posStyle = '';
+        const bgRgba = `rgba(${parseInt(bg.slice(1, 3), 16)},${parseInt(bg.slice(3, 5), 16)},${parseInt(bg.slice(5, 7), 16)},${opacity})`;
+        const stroke = scaledOutline > 0 ? `-webkit-text-stroke:${scaledOutline}px ${outlineC};` : '';
+
+        // 位置: セグメント固有 or プリセット
+        let posClass = '';
+        let wrapperPos = '';
         if (sub.posX !== undefined && sub.posY !== undefined) {
-          posStyle = `left:${sub.posX}%;top:${sub.posY}%;transform:translate(-50%,-50%);`;
+          wrapperPos = `left:${sub.posX}%;top:${sub.posY}%;`;
+        } else if (pos === 'custom') {
+          wrapperPos = `left:${currentStyle.posX}%;top:${currentStyle.posY}%;`;
+        } else {
+          posClass = pos;
         }
 
-        html += `<div class="sub-line ${posClass}" style="
-          font-family:'${font}',sans-serif;
-          font-size:${scaledSize}px;
-          color:${color};
-          background:rgba(${parseInt(bg.slice(1, 3), 16)},${parseInt(bg.slice(3, 5), 16)},${parseInt(bg.slice(5, 7), 16)},${opacity});
-          font-weight:${bold};
-          ${posStyle}
-        ">${sub.text}</div>`;
+        html += `<div class="sub-line ${posClass}" style="${wrapperPos}">
+          <div style="
+            background:${bgRgba};
+            color:${color};
+            font-size:${scaledSize}px;
+            font-weight:${bold};
+            font-family:'${font}',sans-serif;
+            padding:${scaledPadV}px ${scaledPadH}px;
+            border-radius:${scaledRadius}px;
+            text-align:center;
+            line-height:1.4;
+            text-shadow:0 ${Math.round(2 * scale)}px ${Math.round(4 * scale)}px rgba(0,0,0,0.5);
+            white-space:nowrap;
+            ${stroke}
+          ">${sub.text}</div>
+        </div>`;
       });
 
       // テロップ表示
@@ -3440,6 +3457,7 @@
       text.style.fontSize = Math.min(currentStyle.fontSize, 32) + 'px';
       text.style.fontWeight = currentStyle.bold ? 'bold' : 'normal';
       text.style.fontFamily = `'${currentStyle.fontFamily}', sans-serif`;
+      text.style.textShadow = '0 2px 4px rgba(0,0,0,0.5)';
       if (currentStyle.outlineWidth > 0) {
         text.style.webkitTextStroke = `${currentStyle.outlineWidth}px ${currentStyle.outlineColor}`;
         text.style.paintOrder = 'stroke fill';
