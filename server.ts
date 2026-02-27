@@ -316,10 +316,10 @@ function scoreSplitPosition(text: string, pos: number): number {
 }
 
 // ── セグメント後処理: 長いセグメントを最適な位置で分割 ──
-function splitLongSegments(segments: any[], maxDuration = 3.5): any[] {
-    const maxChars = 35; // 2行に収まる最大文字数（縦動画を想定）
-    const minPartChars = 4; // 分割パートの最小文字数
-    const minPartDuration = 0.8; // 分割パートの最小表示秒数
+function splitLongSegments(segments: any[], maxDuration = 7.0): any[] {
+    const maxChars = 50; // 長すぎるセグメントのみ分割（改行はレンダリング時に処理）
+    const minPartChars = 6; // 分割パートの最小文字数
+    const minPartDuration = 1.5; // 分割パートの最小表示秒数
 
     const result: any[] = [];
 
