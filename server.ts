@@ -832,6 +832,9 @@ app.get("/api/render-status/:jobId", (req, res) => {
 // レンダリング済みファイルを配信
 app.use("/output", express.static(path.join(__dirname, "output")));
 
+// カスタムフォント配信（ブラウザプレビュー用）
+app.use("/fonts", express.static(path.join(__dirname, "fonts")));
+
 // 字幕エクスポートAPI (SRT / VTT)
 app.post("/api/export-subtitles", (req, res) => {
     const { subtitles, format } = req.body;
