@@ -2677,14 +2677,33 @@
       if (ffmpegLoaded && ffmpegInstance) return ffmpegInstance;
       const { FFmpeg } = FFmpegWASM;
       const { toBlobURL } = FFmpegUtil;
+
+      // CDNクロスオリジンWorker問題を回避:
+      // FFmpeg内部のWorker生成をインターセプトし、Blob URLワーカーに差し替える
+      const ffmpegWorkerURL = 'https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.15/dist/umd/814.ffmpeg.js';
+      const workerBlobURL = await toBlobURL(ffmpegWorkerURL, 'text/javascript');
+      const wrappedBlob = new Blob(
+        [`importScripts("${workerBlobURL}");`],
+        { type: 'text/javascript' }
+      );
+      const safeWorkerURL = URL.createObjectURL(wrappedBlob);
+
+      const OrigWorker = window.Worker;
+      window.Worker = function(url, opts) {
+        return new OrigWorker(safeWorkerURL);
+      };
+      window.Worker.prototype = OrigWorker.prototype;
+
       ffmpegInstance = new FFmpeg();
       const coreBaseURL = 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/umd';
-      const ffmpegBaseURL = 'https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.15/dist/umd';
-      await ffmpegInstance.load({
-        coreURL: await toBlobURL(`${coreBaseURL}/ffmpeg-core.js`, 'text/javascript'),
-        wasmURL: await toBlobURL(`${coreBaseURL}/ffmpeg-core.wasm`, 'application/wasm'),
-        classWorkerURL: await toBlobURL(`${ffmpegBaseURL}/814.ffmpeg.js`, 'text/javascript'),
-      });
+      try {
+        await ffmpegInstance.load({
+          coreURL: await toBlobURL(`${coreBaseURL}/ffmpeg-core.js`, 'text/javascript'),
+          wasmURL: await toBlobURL(`${coreBaseURL}/ffmpeg-core.wasm`, 'application/wasm'),
+        });
+      } finally {
+        window.Worker = OrigWorker;
+      }
       ffmpegLoaded = true;
       return ffmpegInstance;
     }
