@@ -849,6 +849,7 @@ function executeRender(jobId: string, filename: string) {
             const subtitles = readJSON("_subtitles.json") || [];
             const subtitleStyle = readJSON("_style.json") || undefined;
             const editSettings = readJSON("_edit.json") || {};
+            const audioTracks: { filename: string; startTime: number; volume: number }[] = readJSON("_audio.json") || [];
 
             console.log(`🔧 FFmpeg軽量モード準備中 (job: ${jobId})...`);
 
@@ -900,6 +901,44 @@ function executeRender(jobId: string, filename: string) {
                 trimArgs.push(`-to ${editSettings.trim.endTime}`);
             }
 
+            // ★ 音声トラックの入力とミックス構築
+            const audioInputs: string[] = [];
+            let audioFilter = "";
+            let mapArgs = "";
+
+            if (audioTracks.length > 0) {
+                // 追加音声ファイルを入力として追加
+                const validTracks: typeof audioTracks = [];
+                for (const track of audioTracks) {
+                    const trackPath = path.join(publicDir, track.filename);
+                    if (fs.existsSync(trackPath)) {
+                        audioInputs.push(`-i "${trackPath}"`);
+                        validTracks.push(track);
+                    } else {
+                        console.warn(`⚠️ 音声トラックが見つかりません: ${track.filename}`);
+                    }
+                }
+
+                if (validTracks.length > 0) {
+                    // [0:a]=元動画の音声, [1:a],[2:a]...=追加音声
+                    // 各音声にディレイと音量を適用してamixで合成
+                    const filterParts: string[] = [];
+                    // 元動画の音声
+                    filterParts.push(`[0:a]volume=1.0[a0]`);
+                    for (let i = 0; i < validTracks.length; i++) {
+                        const t = validTracks[i];
+                        const inputIdx = i + 1; // 0はメイン動画
+                        const delayMs = Math.round((t.startTime || 0) * 1000);
+                        const vol = t.volume ?? 0.5;
+                        filterParts.push(`[${inputIdx}:a]adelay=${delayMs}|${delayMs},volume=${vol}[a${inputIdx}]`);
+                    }
+                    // amixで全音声を合成
+                    const amixInputs = Array.from({ length: validTracks.length + 1 }, (_, i) => `[a${i}]`).join('');
+                    filterParts.push(`${amixInputs}amix=inputs=${validTracks.length + 1}:duration=longest:dropout_transition=0[aout]`);
+                    audioFilter = `-filter_complex "${filterParts.join(';')}" -map 0:v -map "[aout]"`;
+                }
+            }
+
             // ★ FFmpegコマンド（1080p + 字幕）— HWエンコーダ優先
             // VideoToolbox: -q:v 1(最高品質)〜100(最低品質)、35=高品質
             const hwAccelDecode = useHWEncoder ? "-hwaccel videotoolbox" : "";
@@ -912,6 +951,8 @@ function executeRender(jobId: string, filename: string) {
                 "-threads 0",
                 ...trimArgs,
                 `-i "${videoPath}"`,
+                ...audioInputs,
+                audioFilter || "",
                 `-vf "${scaleFilter}${assFilter}"`,
                 videoCodec,
                 "-c:a aac -b:a 192k",
