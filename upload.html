@@ -2689,7 +2689,12 @@
 
     async function compressVideo(file) {
       const COMPRESS_THRESHOLD = 50 * 1024 * 1024; // 50MB
+      const COMPRESS_MAX = 500 * 1024 * 1024; // 500MB — WASMメモリ上限を考慮
       if (file.size <= COMPRESS_THRESHOLD) {
+        return file;
+      }
+      if (file.size > COMPRESS_MAX) {
+        console.log('File too large for WASM compression, skipping');
         return file;
       }
 
@@ -2718,17 +2723,18 @@
         const { fetchFile } = FFmpegUtil;
         await ffmpeg.writeFile(inputName, await fetchFile(file));
 
-        await ffmpeg.exec([
+        const ret = await ffmpeg.exec([
           '-i', inputName,
-          '-vf', 'scale=-2:1080',
+          '-vf', "scale=-2:'min(1080,ih)'",
           '-c:v', 'libx264',
-          '-preset', 'fast',
+          '-preset', 'ultrafast',
           '-crf', '28',
           '-c:a', 'aac',
           '-b:a', '128k',
           '-movflags', '+faststart',
           '-y', outputName
         ]);
+        if (ret !== 0) throw new Error(`FFmpeg exited with code ${ret}`);
 
         const data = await ffmpeg.readFile(outputName);
         const compressedBlob = new Blob([data.buffer], { type: 'video/mp4' });
@@ -2759,10 +2765,11 @@
 
       } catch (err) {
         console.error('Compression failed:', err);
+        const reason = err && err.message ? err.message : String(err);
         document.getElementById('compressDetail').textContent =
-          `圧縮に失敗しました。元ファイルでアップロードします`;
-        statsEl.textContent = '';
-        setStep('stepCompress', 'error');
+          `圧縮スキップ — 元ファイルでアップロードします`;
+        statsEl.textContent = `(${reason.slice(0, 80)})`;
+        setStep('stepCompress', 'done');
         return file; // fallback to original
       }
     }
