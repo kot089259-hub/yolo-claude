@@ -1074,6 +1074,7 @@ function executeRender(jobId: string, filename: string) {
                 "ffmpeg -y",
                 hwAccelDecode,
                 "-threads 0",
+                "-progress pipe:1",
                 ...trimArgs,
                 `-i "${videoPath}"`,
                 ...audioInputs,
@@ -1101,27 +1102,44 @@ function executeRender(jobId: string, filename: string) {
                 child.kill("SIGKILL");
             }, FFMPEG_TIMEOUT_MS);
 
-            // FFmpeg進捗パーシング
+            // FFmpeg進捗パーシング（-progress pipe:1 のstdout + stderrの両方から取得）
             const totalDuration = videoInfo.duration;
             let lastProgressUpdate = 0;
+
+            const updateProgress = (currentTimeSec: number) => {
+                if (totalDuration <= 0) return;
+                const progress = Math.min(99, Math.round((currentTimeSec / totalDuration) * 100));
+                if (progress > lastProgressUpdate) {
+                    lastProgressUpdate = progress;
+                    setJobStatus(jobId, { status: "rendering", progress });
+                }
+            };
+
+            // stdout: -progress pipe:1 の出力（out_time_ms=123456 形式、確実）
+            child.stdout?.on("data", (data: Buffer) => {
+                const str = data.toString();
+                const lines = str.split("\n");
+                for (const line of lines) {
+                    const m = line.match(/out_time_ms=(\d+)/);
+                    if (m) {
+                        const timeSec = parseInt(m[1]) / 1000000;
+                        updateProgress(timeSec);
+                    }
+                }
+            });
+
+            // stderr: フォールバック（time=HH:MM:SS.ms 形式）
             child.stderr?.on("data", (data: Buffer) => {
                 const str = data.toString();
                 if (str.includes("frame=") || str.includes("Error") || str.includes("error")) {
                     console.log(`  [ffmpeg] ${str.trim().slice(0, 120)}`);
                 }
-                // time=HH:MM:SS.ms から進捗を計算
                 const timeMatch = str.match(/time=(\d+):(\d+):(\d+(?:\.\d+)?)/);
-                if (timeMatch && totalDuration > 0) {
+                if (timeMatch) {
                     const hours = parseInt(timeMatch[1]);
                     const mins = parseInt(timeMatch[2]);
                     const secs = parseFloat(timeMatch[3]);
-                    const currentTime = hours * 3600 + mins * 60 + secs;
-                    const progress = Math.min(99, Math.round((currentTime / totalDuration) * 100));
-                    // 頻繁なディスク書き込みを避けるため、1%以上変わった場合のみ更新
-                    if (progress > lastProgressUpdate) {
-                        lastProgressUpdate = progress;
-                        setJobStatus(jobId, { status: "rendering", progress });
-                    }
+                    updateProgress(hours * 3600 + mins * 60 + secs);
                 }
             });
 
