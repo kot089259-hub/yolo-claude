@@ -285,7 +285,7 @@ export function generateASSFile(
 
     // 縦動画対応: マージンを動画幅に応じて動的に計算
     const isVertical = videoHeight > videoWidth;
-    const marginLR = Math.round(videoWidth * 0.03); // 左右マージン: 幅の3%
+    const marginLR = Math.round(videoWidth * 0.02); // 左右マージン: 幅の2%
     const marginV = Math.round(videoHeight * 0.03);  // 上下マージン: 高さの3%
 
     // フォントサイズ — PlayResX/PlayResYが出力解像度に設定されているため
@@ -298,7 +298,7 @@ Title: Video Subtitles
 ScriptType: v4.00+
 PlayResX: ${videoWidth}
 PlayResY: ${videoHeight}
-WrapStyle: 0
+WrapStyle: 2
 
 [V4+ Styles]
 Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
