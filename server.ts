@@ -235,6 +235,109 @@ function whisperTranscribe(filePath: string, apiKey: string): { text: string; se
     throw new Error(`Whisper API ${WHISPER_MAX_RETRIES}回失敗: ${lastError}`);
 }
 
+// ── セグメント後処理: 長いセグメントを句読点で分割 ──
+function splitLongSegments(segments: any[], maxDuration = 4.0): any[] {
+    // 句読点・自然な区切りパターン（優先度順）
+    const splitPatterns = [
+        /([。！？!?])/,              // 文末句読点（最優先）
+        /([、,])/,                   // 読点・カンマ
+        /([\s　](?:で|が|と|を|に|は|も|の|から|まで|ので|けど|けれど|って|たら|ても|ながら|ために|ところ|ように|ことが|ことを|ことに|ですが|ますが|しかし|そして|また|ただ|だから|つまり|あと|それで|でも|なので))/,  // 助詞・接続詞の前のスペース
+    ];
+
+    const result: any[] = [];
+
+    for (const seg of segments) {
+        const duration = seg.end - seg.start;
+        const text = seg.text.trim();
+
+        // 短いセグメントはそのまま
+        if (duration <= maxDuration || text.length <= 8) {
+            result.push(seg);
+            continue;
+        }
+
+        // 分割を試みる
+        let parts: string[] = [];
+        let split = false;
+
+        for (const pattern of splitPatterns) {
+            parts = splitTextByPattern(text, pattern);
+            if (parts.length >= 2) {
+                split = true;
+                break;
+            }
+        }
+
+        // どのパターンでも分割できない場合、文字数で均等分割
+        if (!split) {
+            const numParts = Math.ceil(duration / maxDuration);
+            parts = splitTextEvenly(text, numParts);
+        }
+
+        // 分割結果から時間を按分
+        const totalChars = parts.reduce((sum, p) => sum + p.length, 0);
+        let currentTime = seg.start;
+
+        for (let i = 0; i < parts.length; i++) {
+            const partText = parts[i].trim();
+            if (!partText) continue;
+            const ratio = partText.length / totalChars;
+            const partDuration = duration * ratio;
+            const partEnd = i === parts.length - 1 ? seg.end : Math.round((currentTime + partDuration) * 100) / 100;
+
+            result.push({
+                start: Math.round(currentTime * 100) / 100,
+                end: partEnd,
+                text: partText,
+            });
+            currentTime = partEnd;
+        }
+    }
+
+    // indexを振り直す
+    return result.map((seg, i) => ({ ...seg, index: i }));
+}
+
+function splitTextByPattern(text: string, pattern: RegExp): string[] {
+    // パターンで分割し、区切り文字は前のパートに含める
+    const tokens = text.split(pattern);
+    if (tokens.length <= 1) return [text];
+
+    const parts: string[] = [];
+    let current = "";
+    for (let i = 0; i < tokens.length; i++) {
+        current += tokens[i];
+        // 区切り文字（奇数index）の後で分割
+        if (i % 2 === 1 && current.trim()) {
+            parts.push(current);
+            current = "";
+        }
+    }
+    if (current.trim()) parts.push(current);
+
+    // 短すぎるパーツを前のパーツに結合
+    const merged: string[] = [];
+    for (const part of parts) {
+        if (merged.length > 0 && part.trim().length <= 3) {
+            merged[merged.length - 1] += part;
+        } else {
+            merged.push(part);
+        }
+    }
+
+    return merged.length >= 2 ? merged : [text];
+}
+
+function splitTextEvenly(text: string, numParts: number): string[] {
+    if (numParts <= 1) return [text];
+    const charsPerPart = Math.ceil(text.length / numParts);
+    const parts: string[] = [];
+    for (let i = 0; i < text.length; i += charsPerPart) {
+        parts.push(text.slice(i, i + charsPerPart));
+    }
+    return parts;
+}
+
 // 音声文字起こしAPI（OpenAI Whisper API）
 app.post("/api/transcribe", async (req, res) => {
     const rawFilename = req.body.filename;
@@ -335,6 +438,13 @@ app.post("/api/transcribe", async (req, res) => {
         }
 
         console.log(`✅ OpenAI Whisper API: ${subtitles.length}個のセグメントを検出`);
+
+        // 長いセグメントを句読点で分割（4秒超のセグメントを対象）
+        const beforeCount = subtitles.length;
+        subtitles = splitLongSegments(subtitles, 4.0);
+        if (subtitles.length !== beforeCount) {
+            console.log(`✂️ セグメント分割: ${beforeCount}個 → ${subtitles.length}個`);
+        }
 
         // 一時的な音声ファイルを削除
         fs.unlinkSync(audioPath);
