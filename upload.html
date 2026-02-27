@@ -1650,6 +1650,12 @@
     .slot-badge.done {
       background: #d1fae5;
       color: #065f46;
+      text-decoration: none;
+      cursor: pointer;
+    }
+
+    a.slot-badge.done:hover {
+      background: #a7f3d0;
     }
 
     .slot-badge.error {
@@ -2917,6 +2923,7 @@
         if (slot.processing) badgeHTML = '<span class="slot-badge rendering">解析中</span>';
         else if (slot.renderStatus === 'queued') badgeHTML = '<span class="slot-badge queued">待機中</span>';
         else if (slot.renderStatus === 'rendering') badgeHTML = '<span class="slot-badge rendering">処理中</span>';
+        else if (slot.renderStatus === 'done' && slot.renderResult) badgeHTML = `<a class="slot-badge done" href="${SERVER}/${slot.renderResult.path}" download="${slot.renderResult.filename}" onclick="event.stopPropagation()" title="クリックでダウンロード">⬇完了</a>`;
         else if (slot.renderStatus === 'done') badgeHTML = '<span class="slot-badge done">完了</span>';
         else if (slot.renderStatus === 'error') badgeHTML = '<span class="slot-badge error">エラー</span>';
 
@@ -4453,7 +4460,18 @@ echo "✅ レンダリング完了: $OUTPUT"
           statusInfo.textContent = `${doneCount}/${total} 完了`;
 
           if (allDone || doneCount === total) {
-            statusInfo.textContent = `全${total}件完了`;
+            // 完了後にダウンロードリンク一覧を表示
+            let linksHTML = `<div style="font-weight:600;margin-bottom:6px;">全${total}件完了</div>`;
+            slotIndices.forEach(idx => {
+              const slot = videoSlots[idx];
+              if (slot.renderStatus === 'done' && slot.renderResult) {
+                const r = slot.renderResult;
+                linksHTML += `<a href="${SERVER}/${r.path}" download="${r.filename}" style="display:block;margin:4px 0;color:#2563eb;font-size:12px;text-decoration:underline;word-break:break-all;">⬇ 動画${idx + 1}: ${r.filename}</a>`;
+              } else if (slot.renderStatus === 'error') {
+                linksHTML += `<div style="color:#ef4444;font-size:12px;margin:4px 0;">✕ 動画${idx + 1}: エラー</div>`;
+              }
+            });
+            statusInfo.innerHTML = linksHTML;
             resolve();
           } else {
             setTimeout(poll, 3000);
