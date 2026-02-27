@@ -3187,7 +3187,7 @@
 
     // 圧縮をキューに入れて順次実行（FFmpeg.wasmは同時1つのみ）
     // onProgress: (pct: number) => void — 進捗コールバック（バックグラウンド処理用）
-    function compressVideo(file, onProgress) {
+    function compressVideo(file, onProgress, silent) {
       const COMPRESS_THRESHOLD = 50 * 1024 * 1024;
       const COMPRESS_MAX = 500 * 1024 * 1024;
       if (file.size <= COMPRESS_THRESHOLD) return Promise.resolve(file);
@@ -3196,21 +3196,23 @@
         return Promise.resolve(file);
       }
       // キューに追加して順番待ち
-      const result = compressQueue.then(() => compressVideoImpl(file, onProgress));
+      const result = compressQueue.then(() => compressVideoImpl(file, onProgress, silent));
       compressQueue = result.then(() => {}, () => {}); // エラーでもキューを進める
       return result;
     }
 
-    async function compressVideoImpl(file, onProgress) {
+    async function compressVideoImpl(file, onProgress, silent) {
 
-      const stepCompress = document.getElementById('stepCompress');
-      stepCompress.style.display = '';
-      setStep('stepCompress', 'active');
-      document.getElementById('compressDetail').textContent =
-        `${file.name} (${(file.size / 1024 / 1024).toFixed(1)}MB) → 圧縮中...`;
+      if (!silent) {
+        const stepCompress = document.getElementById('stepCompress');
+        stepCompress.style.display = '';
+        setStep('stepCompress', 'active');
+        document.getElementById('compressDetail').textContent =
+          `${file.name} (${(file.size / 1024 / 1024).toFixed(1)}MB) → 圧縮中...`;
+      }
 
-      const progressFill = document.getElementById('compressProgressFill');
-      const statsEl = document.getElementById('compressStats');
+      const progressFill = !silent ? document.getElementById('compressProgressFill') : null;
+      const statsEl = !silent ? document.getElementById('compressStats') : null;
 
       try {
         const ffmpeg = await loadFFmpeg();
@@ -3218,8 +3220,8 @@
         // Track progress via progress event
         ffmpeg.on('progress', ({ progress }) => {
           const pct = Math.min(99, Math.max(0, Math.round(progress * 100)));
-          progressFill.style.width = pct + '%';
-          statsEl.textContent = `${pct}% 完了`;
+          if (progressFill) progressFill.style.width = pct + '%';
+          if (statsEl) statsEl.textContent = `${pct}% 完了`;
           if (onProgress) onProgress(pct);
         });
 
@@ -3251,20 +3253,24 @@
 
         // Use compressed only if smaller
         if (compressedBlob.size >= file.size) {
-          document.getElementById('compressDetail').textContent =
-            `圧縮後のサイズが元より大きいため、元ファイルを使用します`;
-          progressFill.style.width = '100%';
-          statsEl.textContent = '';
-          setStep('stepCompress', 'done');
+          if (!silent) {
+            document.getElementById('compressDetail').textContent =
+              `圧縮後のサイズが元より大きいため、元ファイルを使用します`;
+            progressFill.style.width = '100%';
+            statsEl.textContent = '';
+            setStep('stepCompress', 'done');
+          }
           return file;
         }
 
         const ratio = ((1 - compressedBlob.size / file.size) * 100).toFixed(0);
-        document.getElementById('compressDetail').textContent =
-          `${(file.size / 1024 / 1024).toFixed(1)}MB → ${(compressedBlob.size / 1024 / 1024).toFixed(1)}MB (${ratio}%削減)`;
-        progressFill.style.width = '100%';
-        statsEl.textContent = '圧縮完了';
-        setStep('stepCompress', 'done');
+        if (!silent) {
+          document.getElementById('compressDetail').textContent =
+            `${(file.size / 1024 / 1024).toFixed(1)}MB → ${(compressedBlob.size / 1024 / 1024).toFixed(1)}MB (${ratio}%削減)`;
+          progressFill.style.width = '100%';
+          statsEl.textContent = '圧縮完了';
+          setStep('stepCompress', 'done');
+        }
 
         const compressedFile = new File([compressedBlob], file.name.replace(/\.[^.]+$/, '.mp4'), { type: 'video/mp4' });
         return compressedFile;
@@ -3272,39 +3278,41 @@
       } catch (err) {
         console.error('Compression failed:', err);
         const reason = err && err.message ? err.message : String(err);
-        document.getElementById('compressDetail').textContent =
-          `圧縮スキップ — 元ファイルでアップロードします`;
-        statsEl.textContent = `(${reason.slice(0, 80)})`;
-        setStep('stepCompress', 'done');
+        if (!silent) {
+          document.getElementById('compressDetail').textContent =
+            `圧縮スキップ — 元ファイルでアップロードします`;
+          statsEl.textContent = `(${reason.slice(0, 80)})`;
+          setStep('stepCompress', 'done');
+        }
         return file; // fallback to original
       }
     }
 
-    function uploadWithProgress(url, formData) {
+    function uploadWithProgress(url, formData, silent) {
       return new Promise((resolve, reject) => {
         const xhr = new XMLHttpRequest();
-        const progressFill = document.getElementById('uploadProgressFill');
-        const statsEl = document.getElementById('uploadStats');
+        const progressFill = !silent ? document.getElementById('uploadProgressFill') : null;
+        const statsEl = !silent ? document.getElementById('uploadStats') : null;
 
         let startTime = Date.now();
 
         xhr.upload.addEventListener('progress', (e) => {
           if (e.lengthComputable) {
             const pct = Math.round((e.loaded / e.total) * 100);
-            progressFill.style.width = pct + '%';
+            if (progressFill) progressFill.style.width = pct + '%';
 
             const elapsed = (Date.now() - startTime) / 1000;
             const speed = e.loaded / elapsed;
             const remaining = elapsed > 0 ? (e.total - e.loaded) / speed : 0;
 
-            statsEl.textContent = `${pct}% | ${formatSpeed(speed)} | 残り約${formatTime(remaining)}`;
+            if (statsEl) statsEl.textContent = `${pct}% | ${formatSpeed(speed)} | 残り約${formatTime(remaining)}`;
           }
         });
 
         xhr.addEventListener('load', () => {
           if (xhr.status >= 200 && xhr.status < 300) {
-            progressFill.style.width = '100%';
-            statsEl.textContent = 'アップロード完了';
+            if (progressFill) progressFill.style.width = '100%';
+            if (statsEl) statsEl.textContent = 'アップロード完了';
             try {
               resolve(JSON.parse(xhr.responseText));
             } catch (e) {
@@ -3546,14 +3554,14 @@
         const fileToUpload = await compressVideo(file, (pct) => {
           slot.processingLabel = `圧縮 ${pct}%`;
           renderSlotList();
-        });
+        }, true);
 
         // アップロード
         slot.processingLabel = 'アップロード中';
         renderSlotList();
         const formData = new FormData();
         formData.append("video", fileToUpload);
-        const uploadData = await uploadWithProgress(`${SERVER}/api/upload`, formData);
+        const uploadData = await uploadWithProgress(`${SERVER}/api/upload`, formData, true);
         slot.filename = uploadData.filename;
         slot.uploaded = true;
         if (activeSlotIndex === slotIndex) currentFilename = uploadData.filename;
