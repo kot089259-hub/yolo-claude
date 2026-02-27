@@ -8,6 +8,8 @@
   <link
     href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700;900&family=Noto+Serif+JP:wght@400;700&family=M+PLUS+1p:wght@400;700&family=M+PLUS+Rounded+1c:wght@400;700&family=Kosugi+Maru&family=Sawarabi+Gothic&family=Sawarabi+Mincho&family=Zen+Kaku+Gothic+New:wght@400;700&family=Zen+Maru+Gothic:wght@400;700&family=Zen+Old+Mincho:wght@400;700&family=Shippori+Mincho:wght@400;700&family=Kiwi+Maru:wght@400;700&family=Hachi+Maru+Pop&family=Yusei+Magic&family=Dela+Gothic+One&family=Reggae+One&family=RocknRoll+One&family=Stick&family=DotGothic16&family=Potta+One&family=Rampart+One&family=Train+One&family=Roboto:wght@400;700&family=Open+Sans:wght@400;700&family=Montserrat:wght@400;700&family=Lato:wght@400;700&family=Inter:wght@400;700&display=swap"
     rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.10/dist/umd/ffmpeg.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@ffmpeg/util@0.12.1/dist/umd/util.min.js"></script>
   <style>
     * {
       margin: 0;
@@ -152,6 +154,30 @@
       font-size: 11px;
       color: #94a3b8;
       margin-top: 2px;
+    }
+
+    .step-progress {
+      width: 100%;
+      height: 6px;
+      background: #e2e8f0;
+      border-radius: 3px;
+      margin-top: 6px;
+      overflow: hidden;
+    }
+
+    .step-progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #222222, #444444);
+      border-radius: 3px;
+      width: 0%;
+      transition: width 0.3s ease;
+    }
+
+    .step-stats {
+      font-size: 10px;
+      color: #64748b;
+      margin-top: 3px;
+      font-family: 'SF Mono', 'Fira Code', monospace;
     }
 
     .spinner {
@@ -1929,11 +1955,26 @@
 
     <!-- Progress -->
     <div class="progress-section" id="progressSection">
+      <div class="step" id="stepCompress" style="display:none">
+        <div class="step-icon">📦</div>
+        <div class="step-text">
+          <div class="step-title">動画を圧縮中...</div>
+          <div class="step-detail" id="compressDetail"></div>
+          <div class="step-progress" id="compressProgressBar" style="display:none">
+            <div class="step-progress-fill" id="compressProgressFill"></div>
+          </div>
+          <div class="step-stats" id="compressStats"></div>
+        </div>
+      </div>
       <div class="step" id="stepUpload">
         <div class="step-icon">⬆️</div>
         <div class="step-text">
           <div class="step-title">アップロード中...</div>
           <div class="step-detail" id="uploadDetail"></div>
+          <div class="step-progress" id="uploadProgressBar" style="display:none">
+            <div class="step-progress-fill" id="uploadProgressFill"></div>
+          </div>
+          <div class="step-stats" id="uploadStats"></div>
         </div>
       </div>
       <div class="step" id="stepExtract">
@@ -2613,8 +2654,10 @@
 
     function setStep(id, state) {
       const el = document.getElementById(id);
+      if (!el) return;
       el.className = `step ${state}`;
       if (state === "active") {
+        el.style.display = "";
         const icon = el.querySelector(".step-icon");
         icon.innerHTML = '<div class="spinner"></div>';
       } else if (state === "done") {
@@ -2624,6 +2667,176 @@
         const icon = el.querySelector(".step-icon");
         icon.textContent = "❌";
       }
+    }
+
+    // ── FFmpeg.wasm helpers ──
+    let ffmpegInstance = null;
+    let ffmpegLoaded = false;
+
+    async function loadFFmpeg() {
+      if (ffmpegLoaded && ffmpegInstance) return ffmpegInstance;
+      const { FFmpeg } = FFmpegWASM;
+      ffmpegInstance = new FFmpeg();
+      ffmpegInstance.on('log', ({ message }) => {
+        console.log('[ffmpeg]', message);
+      });
+      await ffmpegInstance.load({
+        coreURL: 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/umd/ffmpeg-core.js',
+        wasmURL: 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/umd/ffmpeg-core.wasm',
+      });
+      ffmpegLoaded = true;
+      return ffmpegInstance;
+    }
+
+    async function compressVideo(file) {
+      const COMPRESS_THRESHOLD = 50 * 1024 * 1024; // 50MB
+      if (file.size <= COMPRESS_THRESHOLD) {
+        return file;
+      }
+
+      const stepCompress = document.getElementById('stepCompress');
+      stepCompress.style.display = '';
+      setStep('stepCompress', 'active');
+      document.getElementById('compressDetail').textContent =
+        `${file.name} (${(file.size / 1024 / 1024).toFixed(1)}MB) → 圧縮中...`;
+
+      const progressBar = document.getElementById('compressProgressBar');
+      const progressFill = document.getElementById('compressProgressFill');
+      const statsEl = document.getElementById('compressStats');
+      progressBar.style.display = '';
+
+      try {
+        const ffmpeg = await loadFFmpeg();
+
+        // Track progress via time output
+        let duration = 0;
+        ffmpeg.on('log', ({ message }) => {
+          // Parse duration from "Duration: HH:MM:SS.xx"
+          const durMatch = message.match(/Duration:\s*(\d+):(\d+):(\d+\.\d+)/);
+          if (durMatch) {
+            duration = parseInt(durMatch[1]) * 3600 + parseInt(durMatch[2]) * 60 + parseFloat(durMatch[3]);
+          }
+          // Parse progress from "time=HH:MM:SS.xx"
+          const timeMatch = message.match(/time=\s*(\d+):(\d+):(\d+\.\d+)/);
+          if (timeMatch && duration > 0) {
+            const currentTime = parseInt(timeMatch[1]) * 3600 + parseInt(timeMatch[2]) * 60 + parseFloat(timeMatch[3]);
+            const pct = Math.min(99, Math.round((currentTime / duration) * 100));
+            progressFill.style.width = pct + '%';
+            statsEl.textContent = `${pct}% 完了`;
+          }
+        });
+
+        const inputName = 'input' + (file.name.endsWith('.mov') ? '.mov' : '.mp4');
+        const outputName = 'compressed.mp4';
+
+        const { fetchFile } = FFmpegUtil;
+        await ffmpeg.writeFile(inputName, await fetchFile(file));
+
+        await ffmpeg.exec([
+          '-i', inputName,
+          '-vf', 'scale=-2:1080',
+          '-c:v', 'libx264',
+          '-preset', 'fast',
+          '-crf', '28',
+          '-c:a', 'aac',
+          '-b:a', '128k',
+          '-movflags', '+faststart',
+          '-y', outputName
+        ]);
+
+        const data = await ffmpeg.readFile(outputName);
+        const compressedBlob = new Blob([data.buffer], { type: 'video/mp4' });
+
+        // Clean up
+        await ffmpeg.deleteFile(inputName);
+        await ffmpeg.deleteFile(outputName);
+
+        // Use compressed only if smaller
+        if (compressedBlob.size >= file.size) {
+          document.getElementById('compressDetail').textContent =
+            `圧縮後のサイズが元より大きいため、元ファイルを使用します`;
+          progressFill.style.width = '100%';
+          statsEl.textContent = '';
+          setStep('stepCompress', 'done');
+          return file;
+        }
+
+        const ratio = ((1 - compressedBlob.size / file.size) * 100).toFixed(0);
+        document.getElementById('compressDetail').textContent =
+          `${(file.size / 1024 / 1024).toFixed(1)}MB → ${(compressedBlob.size / 1024 / 1024).toFixed(1)}MB (${ratio}%削減)`;
+        progressFill.style.width = '100%';
+        statsEl.textContent = '圧縮完了';
+        setStep('stepCompress', 'done');
+
+        const compressedFile = new File([compressedBlob], file.name.replace(/\.[^.]+$/, '.mp4'), { type: 'video/mp4' });
+        return compressedFile;
+
+      } catch (err) {
+        console.error('Compression failed:', err);
+        document.getElementById('compressDetail').textContent =
+          `圧縮に失敗しました。元ファイルでアップロードします`;
+        statsEl.textContent = '';
+        setStep('stepCompress', 'error');
+        return file; // fallback to original
+      }
+    }
+
+    function uploadWithProgress(url, formData) {
+      return new Promise((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        const progressBar = document.getElementById('uploadProgressBar');
+        const progressFill = document.getElementById('uploadProgressFill');
+        const statsEl = document.getElementById('uploadStats');
+        progressBar.style.display = '';
+
+        let startTime = Date.now();
+
+        xhr.upload.addEventListener('progress', (e) => {
+          if (e.lengthComputable) {
+            const pct = Math.round((e.loaded / e.total) * 100);
+            progressFill.style.width = pct + '%';
+
+            const elapsed = (Date.now() - startTime) / 1000;
+            const speed = e.loaded / elapsed;
+            const remaining = elapsed > 0 ? (e.total - e.loaded) / speed : 0;
+
+            statsEl.textContent = `${pct}% | ${formatSpeed(speed)} | 残り約${formatTime(remaining)}`;
+          }
+        });
+
+        xhr.addEventListener('load', () => {
+          if (xhr.status >= 200 && xhr.status < 300) {
+            progressFill.style.width = '100%';
+            statsEl.textContent = 'アップロード完了';
+            try {
+              resolve(JSON.parse(xhr.responseText));
+            } catch (e) {
+              reject(new Error('レスポンスの解析に失敗しました'));
+            }
+          } else {
+            reject(new Error('アップロードに失敗しました'));
+          }
+        });
+
+        xhr.addEventListener('error', () => {
+          reject(new Error('ネットワークエラーが発生しました'));
+        });
+
+        xhr.open('POST', url);
+        xhr.send(formData);
+      });
+    }
+
+    function formatSpeed(bytesPerSec) {
+      if (bytesPerSec >= 1024 * 1024) return (bytesPerSec / 1024 / 1024).toFixed(1) + ' MB/s';
+      if (bytesPerSec >= 1024) return (bytesPerSec / 1024).toFixed(0) + ' KB/s';
+      return bytesPerSec.toFixed(0) + ' B/s';
+    }
+
+    function formatTime(seconds) {
+      if (seconds < 1) return '1秒未満';
+      if (seconds < 60) return Math.ceil(seconds) + '秒';
+      return Math.ceil(seconds / 60) + '分';
     }
 
     function applyColorPreset(fontColor, outlineColor, outlineWidth) {
@@ -2704,21 +2917,37 @@
       document.getElementById("progressSection").classList.add("active");
       document.getElementById("resultSection").classList.remove("active");
       document.getElementById("errorMsg").textContent = "";
-      document.getElementById("uploadDetail").textContent = `${file.name} (${(file.size / 1024 / 1024).toFixed(1)}MB)`;
+
+      // Reset progress UI
+      document.getElementById('stepCompress').style.display = 'none';
+      document.getElementById('stepCompress').className = 'step';
+      document.getElementById('stepCompress').querySelector('.step-icon').textContent = '📦';
+      document.getElementById('compressDetail').textContent = '';
+      document.getElementById('compressProgressBar').style.display = 'none';
+      document.getElementById('compressProgressFill').style.width = '0%';
+      document.getElementById('compressStats').textContent = '';
+      document.getElementById('uploadProgressBar').style.display = 'none';
+      document.getElementById('uploadProgressFill').style.width = '0%';
+      document.getElementById('uploadStats').textContent = '';
+      document.getElementById('stepUpload').className = 'step';
+      document.getElementById('stepUpload').querySelector('.step-icon').textContent = '⬆️';
+      document.getElementById('uploadDetail').textContent = `${file.name} (${(file.size / 1024 / 1024).toFixed(1)}MB)`;
 
       try {
+        // Step 1: Compress (if > 50MB)
+        const fileToUpload = await compressVideo(file);
+
+        // Step 2: Upload with progress
         setStep("stepUpload", "active");
+        document.getElementById("uploadDetail").textContent =
+          `${fileToUpload.name} (${(fileToUpload.size / 1024 / 1024).toFixed(1)}MB)`;
         const formData = new FormData();
-        formData.append("video", file);
-        const uploadRes = await fetch(`${SERVER}/api/upload`, {
-          method: "POST",
-          body: formData,
-        });
-        if (!uploadRes.ok) throw new Error("アップロードに失敗しました");
-        const uploadData = await uploadRes.json();
+        formData.append("video", fileToUpload);
+        const uploadData = await uploadWithProgress(`${SERVER}/api/upload`, formData);
         currentFilename = uploadData.filename;
         setStep("stepUpload", "done");
 
+        // Step 3: Transcribe
         setStep("stepExtract", "active");
         setStep("stepTranscribe", "active");
         const transcribeRes = await fetch(`${SERVER}/api/transcribe`, {
@@ -2740,9 +2969,9 @@
 
       } catch (error) {
         document.getElementById("errorMsg").textContent = `エラー: ${error.message}`;
-        ["stepUpload", "stepExtract", "stepTranscribe"].forEach((id) => {
+        ["stepCompress", "stepUpload", "stepExtract", "stepTranscribe"].forEach((id) => {
           const el = document.getElementById(id);
-          if (el.classList.contains("active")) setStep(id, "error");
+          if (el && el.classList.contains("active")) setStep(id, "error");
         });
       }
     }
