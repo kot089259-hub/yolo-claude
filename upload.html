@@ -2621,7 +2621,6 @@
 
         <div class="actions">
           <button class="btn btn-save" onclick="saveAll()">💾 保存</button>
-          <button class="btn btn-primary" onclick="saveAndOpenStudio()">Remotion Studioで確認 →</button>
           <button class="btn btn-secondary" onclick="location.reload()">別の動画を処理</button>
         </div>
 
@@ -2662,10 +2661,6 @@
             <tr>
               <td>Ctrl + O</td>
               <td>プロジェクトを読み込み</td>
-            </tr>
-            <tr>
-              <td>Ctrl + Enter</td>
-              <td>Remotion Studioを開く</td>
             </tr>
           </table>
         </div>
@@ -2977,6 +2972,23 @@
         resultSection.classList.add('active');
       } else {
         resultSection.classList.remove('active');
+      }
+
+      // レンダリング結果があればそのスロットの結果を表示
+      const renderResult = document.getElementById('renderResult');
+      const renderStatus = document.getElementById('renderStatus');
+      if (slot.renderStatus === 'done' && slot.renderResult) {
+        const r = slot.renderResult;
+        const videoUrl = `${SERVER}/${r.path}`;
+        renderStatus.className = 'render-status success';
+        renderStatus.textContent = '\u2705 \u30ec\u30f3\u30c0\u30ea\u30f3\u30b0\u5b8c\u4e86\uff01';
+        renderResult.innerHTML = `
+          <video controls style="width:100%;max-height:360px;border-radius:8px;margin:8px 0;background:#000;" src="${videoUrl}"></video>
+          <a class="download-link" href="${videoUrl}" download="${r.filename}">\u2b07 ${r.filename} \u3092\u30c0\u30a6\u30f3\u30ed\u30fc\u30c9</a>`;
+      } else {
+        renderStatus.className = 'render-status';
+        renderStatus.textContent = '';
+        renderResult.innerHTML = '';
       }
 
       // フォーム値を復元
@@ -4317,7 +4329,10 @@ echo "✅ レンダリング完了: $OUTPUT"
 
         status.className = 'render-status success';
         status.textContent = '\u2705 \u30ec\u30f3\u30c0\u30ea\u30f3\u30b0\u5b8c\u4e86\uff01';
-        result.innerHTML = `<a class="download-link" href="${SERVER}/${jobResult.path}" download="${jobResult.filename}">\u2b07 ${jobResult.filename} \u3092\u30c0\u30a6\u30f3\u30ed\u30fc\u30c9</a>`;
+        const videoUrl = `${SERVER}/${jobResult.path}`;
+        result.innerHTML = `
+          <video controls style="width:100%;max-height:360px;border-radius:8px;margin:8px 0;background:#000;" src="${videoUrl}"></video>
+          <a class="download-link" href="${videoUrl}" download="${jobResult.filename}">\u2b07 ${jobResult.filename} \u3092\u30c0\u30a6\u30f3\u30ed\u30fc\u30c9</a>`;
       } catch (error) {
         videoSlots[renderSlotIdx].renderStatus = 'error';
         renderSlotList();
@@ -4649,9 +4664,6 @@ echo "✅ レンダリング完了: $OUTPUT"
       } else if (e.key === 'o' || e.key === 'O') {
         e.preventDefault();
         document.getElementById('projectFileInput').click();
-      } else if (e.key === 'Enter') {
-        e.preventDefault();
-        saveAndOpenStudio();
       }
     });
 

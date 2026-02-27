@@ -1028,7 +1028,8 @@ app.get("/api/render-status/:jobId", (req, res) => {
     res.json(job);
 });
 
-// レンダリング済みファイルを配信
+// 静的ファイル配信
+app.use("/public", express.static(path.join(__dirname, "public")));
 app.use("/output", express.static(path.join(__dirname, "output")));
 
 // カスタムフォント配信（ブラウザプレビュー用）
