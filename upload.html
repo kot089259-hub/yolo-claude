@@ -3403,8 +3403,19 @@
     }
 
     async function processFile(file) {
-      // 現在のスロットが使用中なら次の空きスロットを自動選択
-      if (videoSlots[activeSlotIndex].uploaded || videoSlots[activeSlotIndex].processing) {
+      // アクティブスロットが処理中なら、バックグラウンド処理にルーティング
+      // （共有プログレスUIをリセットしないため、1つ目の進捗表示を壊さない）
+      if (videoSlots[activeSlotIndex].processing) {
+        const emptyIdx = videoSlots.findIndex(s => !s.uploaded && !s.processing);
+        if (emptyIdx !== -1) {
+          processFileToSlot(file, emptyIdx);
+        } else {
+          document.getElementById("errorMsg").textContent = "空きスロットがありません";
+        }
+        return;
+      }
+      // アクティブスロットがアップロード済みなら次の空きスロットに切替
+      if (videoSlots[activeSlotIndex].uploaded) {
         const emptyIdx = videoSlots.findIndex(s => !s.uploaded && !s.processing);
         if (emptyIdx !== -1 && emptyIdx !== activeSlotIndex) {
           syncToSlot();
