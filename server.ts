@@ -162,7 +162,7 @@ app.get("/health", (_req, res) => {
     const mem = process.memoryUsage();
     res.json({
         status: "ok",
-        version: "2026-02-27-v3",
+        version: "2026-02-27-v4",
         uptime: Math.round(process.uptime()),
         memory: {
             heapUsedMB: Math.round(mem.heapUsed / 1024 / 1024),
@@ -318,7 +318,7 @@ function scoreSplitPosition(text: string, pos: number): number {
 // ── セグメント後処理: 閾値ベース + 文法スコアで分割 ──
 // 1. 句点（。！？）では常に分割（文の区切りは長さに関係なく切る）
 // 2. 閾値超え（秒数/文字数）の場合のみ、読点・接続表現の最適位置で分割
-function splitSegments(segments: any[], maxDuration = 6.0, maxChars = 40): any[] {
+function splitSegments(segments: any[], maxDuration = 4.5, maxChars = 30): any[] {
     const minPartChars = 5;
     const minPartDuration = 1.2;
     const result: any[] = [];
