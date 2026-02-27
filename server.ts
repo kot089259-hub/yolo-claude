@@ -94,6 +94,20 @@ setInterval(() => {
     }
 }, 30 * 1000); // 30秒ごと
 
+// ── ハードウェアエンコーダ検出（macOS VideoToolbox） ──
+let useHWEncoder = false;
+let hwEncoderName = "";
+try {
+    const encoders = execSync("ffmpeg -encoders 2>/dev/null", { encoding: "utf-8" });
+    if (encoders.includes("h264_videotoolbox")) {
+        useHWEncoder = true;
+        hwEncoderName = "h264_videotoolbox";
+        console.log("🚀 ハードウェアエンコーダ検出: h264_videotoolbox (M-chip GPU加速)");
+    }
+} catch {
+    console.log("ℹ️ FFmpegエンコーダ検出スキップ — ソフトウェアエンコードを使用");
+}
+
 // ── 同時レンダリング制限（早期宣言 — ヘルスチェックで参照） ──
 const MAX_CONCURRENT_RENDERS = 4;
 let activeRenders = 0;
@@ -861,13 +875,16 @@ function executeRender(jobId: string, filename: string) {
                 trimArgs.push(`-to ${editSettings.trim.endTime}`);
             }
 
-            // ★ シンプルなFFmpegコマンド（1080p + 字幕）
+            // ★ FFmpegコマンド（1080p + 字幕）— HWエンコーダ優先
+            const videoCodec = useHWEncoder
+                ? `-c:v ${hwEncoderName} -q:v 65 -allow_sw 1`
+                : "-c:v libx264 -preset ultrafast -crf 20";
             const command = [
                 "ffmpeg -y",
                 ...trimArgs,
                 `-i "${videoPath}"`,
                 `-vf "${scaleFilter}${assFilter}"`,
-                "-c:v libx264 -preset ultrafast -crf 20",
+                videoCodec,
                 "-c:a aac -b:a 128k",
                 "-movflags +faststart",
                 `"${outputPath}"`,
