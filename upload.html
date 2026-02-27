@@ -2726,6 +2726,7 @@
         undoStack: [],
         redoStack: [],
         uploaded: false,
+        processing: false, // アップロード/文字起こし処理中フラグ
         videoObjectURL: null,
         renderStatus: null, // null | "queued" | "rendering" | "done" | "error"
         renderJobId: null,
@@ -2914,7 +2915,8 @@
         const name = slot.uploaded ? slot.filename.replace(/^upload_\d+/, '動画').replace(/\.\w+$/, '') : '';
         const displayName = slot.uploaded ? `動画${i + 1}` : '(空)';
         let badgeHTML = '';
-        if (slot.renderStatus === 'queued') badgeHTML = '<span class="slot-badge queued">待機中</span>';
+        if (slot.processing) badgeHTML = '<span class="slot-badge rendering">解析中</span>';
+        else if (slot.renderStatus === 'queued') badgeHTML = '<span class="slot-badge queued">待機中</span>';
         else if (slot.renderStatus === 'rendering') badgeHTML = '<span class="slot-badge rendering">処理中</span>';
         else if (slot.renderStatus === 'done') badgeHTML = '<span class="slot-badge done">完了</span>';
         else if (slot.renderStatus === 'error') badgeHTML = '<span class="slot-badge error">エラー</span>';
@@ -2953,9 +2955,17 @@
         videoPreview.style.display = 'none';
       }
 
-      // 結果セクション表示
+      // progressSectionは現在のスロットが処理中の場合のみ表示
+      const progressSection = document.getElementById('progressSection');
+      if (slot.processing) {
+        progressSection.classList.add('active');
+      } else {
+        progressSection.classList.remove('active');
+      }
+
+      // 結果セクション: アップロード済み && 処理完了のスロットのみ表示
       const resultSection = document.getElementById('resultSection');
-      if (slot.uploaded) {
+      if (slot.uploaded && !slot.processing) {
         resultSection.classList.add('active');
       } else {
         resultSection.classList.remove('active');
@@ -3346,6 +3356,7 @@
 
     async function processFile(file) {
       const targetSlot = activeSlotIndex;
+      videoSlots[targetSlot].processing = true;
 
       const videoPreview = document.getElementById("videoPreview");
       const previewVideo = document.getElementById("previewVideo");
@@ -3357,6 +3368,7 @@
       document.getElementById("progressSection").classList.add("active");
       document.getElementById("resultSection").classList.remove("active");
       document.getElementById("errorMsg").textContent = "";
+      renderSlotList();
 
       // Reset progress UI
       document.getElementById('stepCompress').style.display = 'none';
@@ -3404,14 +3416,19 @@
         const data = await transcribeRes.json();
         setStep("stepTranscribe", "done");
         videoSlots[targetSlot].subtitles = data.subtitles;
+        videoSlots[targetSlot].processing = false;
         renderSlotList();
 
         // アクティブスロットが変わっていなければUIを更新
         if (activeSlotIndex === targetSlot) {
+          document.getElementById("progressSection").classList.remove("active");
+          document.getElementById("resultSection").classList.add("active");
           displayResults();
         }
 
       } catch (error) {
+        videoSlots[targetSlot].processing = false;
+        renderSlotList();
         document.getElementById("errorMsg").textContent = `エラー: ${error.message}`;
         ["stepCompress", "stepUpload", "stepExtract", "stepTranscribe"].forEach((id) => {
           const el = document.getElementById(id);
@@ -3494,7 +3511,10 @@
         }
       });
 
-      document.getElementById("resultSection").classList.add("active");
+      // resultSectionの表示はswitchSlot/processFileが管理（ここでは強制表示しない）
+      if (videoSlots[activeSlotIndex].uploaded) {
+        document.getElementById("resultSection").classList.add("active");
+      }
     }
 
     function toggleSegStyle(index) {
