@@ -901,45 +901,167 @@ function executeRender(jobId: string, filename: string) {
                 trimArgs.push(`-to ${editSettings.trim.endTime}`);
             }
 
-            // ★ 音声トラックの入力とミックス構築
-            const audioInputs: string[] = [];
-            let audioFilter = "";
-            let mapArgs = "";
+            // ★ ビデオフィルターチェーン構築
+            const videoFilters: string[] = [];
 
-            if (audioTracks.length > 0) {
-                // 追加音声ファイルを入力として追加
-                const validTracks: typeof audioTracks = [];
-                for (const track of audioTracks) {
-                    const trackPath = path.join(publicDir, track.filename);
-                    if (fs.existsSync(trackPath)) {
-                        audioInputs.push(`-i "${trackPath}"`);
-                        validTracks.push(track);
+            // スケーリング（常に適用）
+            videoFilters.push(scaleFilter);
+
+            // 字幕（ASS）
+            if (assFilter) {
+                videoFilters.push(assFilter.replace(/^,/, ''));
+            }
+
+            // 再生速度（1.0以外の場合）
+            const speed = editSettings.speedSections?.[0]?.speed;
+            if (speed && speed !== 1) {
+                videoFilters.push(`setpts=${(1 / speed).toFixed(4)}*PTS`);
+            }
+
+            // フィルター（明るさ・コントラスト・彩度・色相・セピア・グレースケール・ブラー）
+            const f = editSettings.filters;
+            if (f) {
+                const eqParts: string[] = [];
+                if (f.brightness && f.brightness !== 100) {
+                    eqParts.push(`brightness=${((f.brightness - 100) / 100).toFixed(2)}`);
+                }
+                if (f.contrast && f.contrast !== 100) {
+                    eqParts.push(`contrast=${(f.contrast / 100).toFixed(2)}`);
+                }
+                if (f.saturate && f.saturate !== 100) {
+                    eqParts.push(`saturation=${(f.saturate / 100).toFixed(2)}`);
+                }
+                if (eqParts.length > 0) {
+                    videoFilters.push(`eq=${eqParts.join(':')}`);
+                }
+                if (f.hueRotate && f.hueRotate !== 0) {
+                    videoFilters.push(`hue=h=${f.hueRotate}`);
+                }
+                if (f.sepia && f.sepia > 0) {
+                    // セピア近似: 彩度下げ + 暖色化
+                    const sepiaStr = (f.sepia / 100).toFixed(2);
+                    videoFilters.push(`colorbalance=rs=${sepiaStr}:gs=${(f.sepia * 0.5 / 100).toFixed(2)}:bs=-${sepiaStr}`);
+                }
+                if (f.grayscale && f.grayscale > 0) {
+                    if (f.grayscale >= 100) {
+                        videoFilters.push(`format=gray,format=yuv420p`);
                     } else {
-                        console.warn(`⚠️ 音声トラックが見つかりません: ${track.filename}`);
+                        videoFilters.push(`eq=saturation=${(1 - f.grayscale / 100).toFixed(2)}`);
                     }
                 }
-
-                if (validTracks.length > 0) {
-                    // [0:a]=元動画の音声, [1:a],[2:a]...=追加音声
-                    // 各音声にディレイと音量を適用してamixで合成
-                    const filterParts: string[] = [];
-                    // 元動画の音声
-                    filterParts.push(`[0:a]volume=1.0[a0]`);
-                    for (let i = 0; i < validTracks.length; i++) {
-                        const t = validTracks[i];
-                        const inputIdx = i + 1; // 0はメイン動画
-                        const delayMs = Math.round((t.startTime || 0) * 1000);
-                        const vol = t.volume ?? 0.5;
-                        filterParts.push(`[${inputIdx}:a]adelay=${delayMs}|${delayMs},volume=${vol}[a${inputIdx}]`);
-                    }
-                    // amixで全音声を合成
-                    const amixInputs = Array.from({ length: validTracks.length + 1 }, (_, i) => `[a${i}]`).join('');
-                    filterParts.push(`${amixInputs}amix=inputs=${validTracks.length + 1}:duration=longest:dropout_transition=0[aout]`);
-                    audioFilter = `-filter_complex "${filterParts.join(';')}" -map 0:v -map "[aout]"`;
+                if (f.blur && f.blur > 0) {
+                    const sigma = Math.max(1, Math.round(f.blur * 2));
+                    videoFilters.push(`gblur=sigma=${sigma}`);
                 }
             }
 
-            // ★ FFmpegコマンド（1080p + 字幕）— HWエンコーダ優先
+            // Ken Burns（ズーム + パン）
+            const kb = editSettings.kenBurns;
+            if (kb?.enabled) {
+                const ss = kb.startScale || 1.0;
+                const es = kb.endScale || 1.2;
+                const sx = kb.startX || 0;
+                const ex = kb.endX || 0;
+                const sy = kb.startY || 0;
+                const ey = kb.endY || 0;
+                // zoompanフィルタ: ズームとパンを同時制御
+                videoFilters.push(
+                    `zoompan=z='${ss.toFixed(2)}+(${(es - ss).toFixed(4)})*on/duration*1':x='iw/2-(iw/zoom/2)+(${sx}+(${ex}-${sx})*on/duration*1)*iw/100':y='ih/2-(ih/zoom/2)+(${sy}+(${ey}-${sy})*on/duration*1)*ih/100':d=1:s=${outWidth}x${outHeight}:fps=${videoInfo.fps || 30}`
+                );
+            }
+
+            // フェードイン/アウト
+            const fadeIn = editSettings.transition?.fadeIn;
+            const fadeOut = editSettings.transition?.fadeOut;
+            if (fadeIn && fadeIn > 0) {
+                videoFilters.push(`fade=t=in:st=0:d=${fadeIn}`);
+            }
+            if (fadeOut && fadeOut > 0) {
+                // フェードアウトは動画の最後からの相対位置
+                const duration = videoInfo.duration || 60;
+                const trimEnd = editSettings.trim?.endTime || duration;
+                const trimStart = editSettings.trim?.startTime || 0;
+                const effectiveDuration = trimEnd - trimStart;
+                const fadeOutStart = Math.max(0, effectiveDuration - fadeOut);
+                videoFilters.push(`fade=t=out:st=${fadeOutStart.toFixed(2)}:d=${fadeOut}`);
+            }
+
+            // ★ 音声フィルター + 追加音声トラック構築
+            const audioInputs: string[] = [];
+            const audioFilterParts: string[] = [];
+            let hasAudioMix = false;
+
+            // 再生速度が変わる場合は音声テンポも変更
+            let mainAudioFilter = "";
+            if (speed && speed !== 1) {
+                mainAudioFilter = `atempo=${speed}`;
+            }
+            // 音声フェード
+            const afadeParts: string[] = [];
+            if (fadeIn && fadeIn > 0) {
+                afadeParts.push(`afade=t=in:st=0:d=${fadeIn}`);
+            }
+            if (fadeOut && fadeOut > 0) {
+                const duration = videoInfo.duration || 60;
+                const trimEnd = editSettings.trim?.endTime || duration;
+                const trimStart = editSettings.trim?.startTime || 0;
+                const effectiveDuration = trimEnd - trimStart;
+                const fadeOutStart = Math.max(0, effectiveDuration - fadeOut);
+                afadeParts.push(`afade=t=out:st=${fadeOutStart.toFixed(2)}:d=${fadeOut}`);
+            }
+            if (mainAudioFilter) afadeParts.unshift(mainAudioFilter);
+
+            // 追加音声トラック
+            const validAudioTracks: typeof audioTracks = [];
+            for (const track of audioTracks) {
+                const trackPath = path.join(publicDir, track.filename);
+                if (fs.existsSync(trackPath)) {
+                    audioInputs.push(`-i "${trackPath}"`);
+                    validAudioTracks.push(track);
+                } else {
+                    console.warn(`⚠️ 音声トラックが見つかりません: ${track.filename}`);
+                }
+            }
+
+            // ★ filter_complex 構築（音声トラックがある場合は必須）
+            let filterArg = "";
+            let mapArgs = "";
+
+            if (validAudioTracks.length > 0) {
+                // filter_complex に映像・音声フィルターを統合
+                const complexParts: string[] = [];
+
+                // 映像チェーン: [0:v] → filters → [vout]
+                complexParts.push(`[0:v]${videoFilters.join(',')}[vout]`);
+
+                // 元動画の音声
+                const mainAudioChain = afadeParts.length > 0 ? afadeParts.join(',') : 'volume=1.0';
+                complexParts.push(`[0:a]${mainAudioChain}[a0]`);
+
+                // 追加音声トラック
+                for (let i = 0; i < validAudioTracks.length; i++) {
+                    const t = validAudioTracks[i];
+                    const inputIdx = i + 1;
+                    const delayMs = Math.round((t.startTime || 0) * 1000);
+                    const vol = t.volume ?? 1.0;
+                    complexParts.push(`[${inputIdx}:a]adelay=${delayMs}|${delayMs},volume=${vol}[a${inputIdx}]`);
+                }
+
+                // amixで全音声を合成
+                const amixInputs = Array.from({ length: validAudioTracks.length + 1 }, (_, i) => `[a${i}]`).join('');
+                complexParts.push(`${amixInputs}amix=inputs=${validAudioTracks.length + 1}:duration=longest:dropout_transition=0[aout]`);
+
+                filterArg = `-filter_complex "${complexParts.join(';')}"`;
+                mapArgs = '-map "[vout]" -map "[aout]"';
+            } else {
+                // 音声トラックなし → 通常の -vf + 音声フィルター
+                filterArg = `-vf "${videoFilters.join(',')}"`;
+                if (afadeParts.length > 0) {
+                    filterArg += ` -af "${afadeParts.join(',')}"`;
+                }
+            }
+
+            // ★ FFmpegコマンド（1080p + 字幕 + 編集設定）— HWエンコーダ優先
             // VideoToolbox: -q:v 1(最高品質)〜100(最低品質)、35=高品質
             const hwAccelDecode = useHWEncoder ? "-hwaccel videotoolbox" : "";
             const videoCodec = useHWEncoder
@@ -952,8 +1074,8 @@ function executeRender(jobId: string, filename: string) {
                 ...trimArgs,
                 `-i "${videoPath}"`,
                 ...audioInputs,
-                audioFilter || "",
-                `-vf "${scaleFilter}${assFilter}"`,
+                filterArg,
+                mapArgs,
                 videoCodec,
                 "-c:a aac -b:a 192k",
                 "-movflags +faststart",
