@@ -316,8 +316,8 @@ function scoreSplitPosition(text: string, pos: number): number {
 }
 
 // ── セグメント後処理: 長いセグメントを最適な位置で分割 ──
-function splitLongSegments(segments: any[], maxDuration = 7.0): any[] {
-    const maxChars = 50; // 長すぎるセグメントのみ分割（改行はレンダリング時に処理）
+function splitLongSegments(segments: any[], maxDuration = 5.0): any[] {
+    const maxChars = 40; // 長めのセグメントを適度に分割
     const minPartChars = 6; // 分割パートの最小文字数
     const minPartDuration = 1.5; // 分割パートの最小表示秒数
 
