@@ -209,7 +209,7 @@ const SingleSubtitle: React.FC<{
                     whiteSpace: "pre-wrap",
                     wordBreak: "keep-all",
                     overflowWrap: "break-word",
-                    maxWidth: "90%",
+                    maxWidth: "96%",
                     boxSizing: "border-box" as const,
                 }}
             >

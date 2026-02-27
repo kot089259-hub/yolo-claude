@@ -2976,8 +2976,8 @@
           posClass = pos;
         }
 
-        // ASS側と同じロジックでテキストを折り返し（renderW基準の90%）
-        const maxTextWidthPx = renderW * 0.90;
+        // ASS側と同じロジックでテキストを折り返し（renderW基準の96%）
+        const maxTextWidthPx = renderW * 0.96;
         const wrappedText = wrapSubText(sub.text, size, maxTextWidthPx);
         const displayText = wrappedText.split('\n').map(line => {
           const span = document.createElement('span');
@@ -2998,7 +2998,7 @@
             line-height:1.4;
             text-shadow:0 ${Math.round(2 * scale)}px ${Math.round(4 * scale)}px rgba(0,0,0,0.5);
             white-space:pre-wrap;
-            max-width:90%;
+            max-width:96%;
             box-sizing:border-box;
             ${stroke}
           ">${wrappedText}</div>
