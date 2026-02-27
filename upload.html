@@ -3450,18 +3450,22 @@
       document.getElementById("errorMsg").textContent = "";
       renderSlotList();
 
-      // Reset progress UI
+      // Reset progress UI — 全ステップを初期状態に戻す
       document.getElementById('stepCompress').style.display = 'none';
       document.getElementById('stepCompress').className = 'step';
       document.getElementById('stepCompress').querySelector('.step-icon').textContent = '📦';
       document.getElementById('compressDetail').textContent = '';
       document.getElementById('compressProgressFill').style.width = '0%';
       document.getElementById('compressStats').textContent = '';
-      document.getElementById('uploadProgressFill').style.width = '0%';
-      document.getElementById('uploadStats').textContent = '';
       document.getElementById('stepUpload').className = 'step';
       document.getElementById('stepUpload').querySelector('.step-icon').textContent = '⬆️';
+      document.getElementById('uploadProgressFill').style.width = '0%';
+      document.getElementById('uploadStats').textContent = '';
       document.getElementById('uploadDetail').textContent = `${file.name} (${(file.size / 1024 / 1024).toFixed(1)}MB)`;
+      document.getElementById('stepExtract').className = 'step';
+      document.getElementById('stepExtract').querySelector('.step-icon').textContent = '🎵';
+      document.getElementById('stepTranscribe').className = 'step';
+      document.getElementById('stepTranscribe').querySelector('.step-icon').textContent = '🤖';
 
       try {
         // Step 1: Compress (if > 50MB)
