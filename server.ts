@@ -278,14 +278,48 @@ async function whisperTranscribe(filePath: string, apiKey: string): Promise<{ te
     throw new Error(`Whisper API ${WHISPER_MAX_RETRIES}回失敗: ${lastError}`);
 }
 
-// ── セグメント後処理: 長いセグメントを句読点で分割 ──
-function splitLongSegments(segments: any[], maxDuration = 4.0): any[] {
-    // 句読点・自然な区切りパターン（優先度順）
-    const splitPatterns = [
-        /([。！？!?])/,              // 文末句読点（最優先）
-        /([、,])/,                   // 読点・カンマ
-        /([\s　](?:で|が|と|を|に|は|も|の|から|まで|ので|けど|けれど|って|たら|ても|ながら|ために|ところ|ように|ことが|ことを|ことに|ですが|ますが|しかし|そして|また|ただ|だから|つまり|あと|それで|でも|なので))/,  // 助詞・接続詞の前のスペース
-    ];
+// ── セグメント分割位置のスコアリング ──
+function scoreSplitPosition(text: string, pos: number): number {
+    if (pos <= 0 || pos >= text.length) return -1;
+    const before = text[pos - 1];
+
+    // 文末句読点の後
+    if ('。！？!?'.includes(before)) return 100;
+    // 読点・カンマの後
+    if ('、,，'.includes(before)) return 80;
+    // 閉じ括弧の後
+    if ('」』）】'.includes(before)) return 75;
+
+    // 複数文字の接続表現の後
+    const lookback = text.slice(Math.max(0, pos - 4), pos);
+    const connectors3 = ['けれど', 'ながら', 'ですが', 'ますが', 'ところ', 'ように'];
+    for (const c of connectors3) {
+        if (lookback.endsWith(c)) return 70;
+    }
+    const connectors2 = ['けど', 'から', 'ので', 'のに', 'ても', 'って', 'たら', 'まで', 'より', 'ます', 'です', 'した', 'する', 'ある', 'いる', 'ない', 'った'];
+    for (const c of connectors2) {
+        if (lookback.endsWith(c)) return 65;
+    }
+
+    // 助詞の後（前が漢字・カタカナのとき）
+    if ('はがをにでともへの'.includes(before) && pos >= 2) {
+        const prev = text[pos - 2];
+        const code = prev.codePointAt(0) || 0;
+        const isKanjiOrKata =
+            (code >= 0x4E00 && code <= 0x9FFF) ||
+            (code >= 0x30A0 && code <= 0x30FF) ||
+            (code >= 0x3400 && code <= 0x4DBF);
+        if (isKanjiOrKata) return 50;
+    }
+
+    return 0;
+}
+
+// ── セグメント後処理: 長いセグメントを最適な位置で分割 ──
+function splitLongSegments(segments: any[], maxDuration = 3.5): any[] {
+    const maxChars = 35; // 2行に収まる最大文字数（縦動画を想定）
+    const minPartChars = 4; // 分割パートの最小文字数
+    const minPartDuration = 0.8; // 分割パートの最小表示秒数
 
     const result: any[] = [];
 
@@ -294,91 +328,90 @@ function splitLongSegments(segments: any[], maxDuration = 4.0): any[] {
         const text = seg.text.trim();
 
         // 短いセグメントはそのまま
-        if (duration <= maxDuration || text.length <= 8) {
+        const needsSplit = duration > maxDuration || text.length > maxChars;
+        if (!needsSplit || text.length <= 6) {
             result.push(seg);
             continue;
         }
 
-        // 分割を試みる
-        let parts: string[] = [];
-        let split = false;
+        // 最適な分割位置を探す（中央付近で文法スコアが高い位置）
+        const mid = Math.floor(text.length / 2);
+        const searchMin = Math.max(minPartChars, Math.floor(text.length * 0.2));
+        const searchMax = Math.min(text.length - minPartChars, Math.floor(text.length * 0.8));
 
-        for (const pattern of splitPatterns) {
-            parts = splitTextByPattern(text, pattern);
-            if (parts.length >= 2) {
-                split = true;
-                break;
+        let bestPos = -1;
+        let bestScore = -Infinity;
+
+        for (let i = searchMin; i <= searchMax; i++) {
+            const grammarScore = scoreSplitPosition(text, i);
+            if (grammarScore <= 0) continue; // 文法的に分割不可な位置はスキップ
+
+            // 中央からの距離ペナルティ
+            const distPenalty = (Math.abs(i - mid) / text.length) * 40;
+            const score = grammarScore - distPenalty;
+
+            if (score > bestScore) {
+                bestScore = score;
+                bestPos = i;
             }
         }
 
-        // どのパターンでも分割できない場合、文字数で均等分割
-        if (!split) {
-            const numParts = Math.ceil(duration / maxDuration);
-            parts = splitTextEvenly(text, numParts);
+        // 良い分割位置が見つからなかった場合
+        if (bestPos < 0) {
+            // 文法スコア0のポジションも含めて、中央に最も近い位置で分割
+            // ただしひらがな→漢字の境界を優先（語の区切り）
+            let fallbackPos = mid;
+            let fallbackScore = -Infinity;
+            for (let i = searchMin; i <= searchMax; i++) {
+                const afterCode = text.codePointAt(i) || 0;
+                const beforeCode = text.codePointAt(i - 1) || 0;
+                const isWordBoundary =
+                    // ひらがな→漢字
+                    (beforeCode >= 0x3040 && beforeCode <= 0x309F && afterCode >= 0x4E00 && afterCode <= 0x9FFF) ||
+                    // カタカナ→非カタカナ
+                    (beforeCode >= 0x30A0 && beforeCode <= 0x30FF && !(afterCode >= 0x30A0 && afterCode <= 0x30FF));
+
+                const distPenalty = Math.abs(i - mid);
+                const score = (isWordBoundary ? 100 : 0) - distPenalty;
+                if (score > fallbackScore) {
+                    fallbackScore = score;
+                    fallbackPos = i;
+                }
+            }
+            bestPos = fallbackPos;
         }
 
-        // 分割結果から時間を按分
-        const totalChars = parts.reduce((sum, p) => sum + p.length, 0);
-        let currentTime = seg.start;
+        // 2つに分割
+        const part1 = text.slice(0, bestPos).trim();
+        const part2 = text.slice(bestPos).trim();
 
-        for (let i = 0; i < parts.length; i++) {
-            const partText = parts[i].trim();
-            if (!partText) continue;
-            const ratio = partText.length / totalChars;
-            const partDuration = duration * ratio;
-            const partEnd = i === parts.length - 1 ? seg.end : Math.round((currentTime + partDuration) * 100) / 100;
-
-            result.push({
-                start: Math.round(currentTime * 100) / 100,
-                end: partEnd,
-                text: partText,
-            });
-            currentTime = partEnd;
+        if (!part1 || !part2) {
+            result.push(seg);
+            continue;
         }
+
+        // 時間を文字数比率で按分
+        const totalChars = part1.length + part2.length;
+        const ratio1 = part1.length / totalChars;
+        const splitTime = Math.round((seg.start + duration * ratio1) * 100) / 100;
+
+        // 最小表示秒数チェック
+        if (splitTime - seg.start < minPartDuration || seg.end - splitTime < minPartDuration) {
+            result.push(seg);
+            continue;
+        }
+
+        const seg1 = { start: seg.start, end: splitTime, text: part1 };
+        const seg2 = { start: splitTime, end: seg.end, text: part2 };
+
+        // 分割後のパートがまだ長い場合は再帰的に分割
+        const recurse1 = splitLongSegments([seg1], maxDuration);
+        const recurse2 = splitLongSegments([seg2], maxDuration);
+        result.push(...recurse1, ...recurse2);
     }
 
     // indexを振り直す
     return result.map((seg, i) => ({ ...seg, index: i }));
-}
-
-function splitTextByPattern(text: string, pattern: RegExp): string[] {
-    // パターンで分割し、区切り文字は前のパートに含める
-    const tokens = text.split(pattern);
-    if (tokens.length <= 1) return [text];
-
-    const parts: string[] = [];
-    let current = "";
-    for (let i = 0; i < tokens.length; i++) {
-        current += tokens[i];
-        // 区切り文字（奇数index）の後で分割
-        if (i % 2 === 1 && current.trim()) {
-            parts.push(current);
-            current = "";
-        }
-    }
-    if (current.trim()) parts.push(current);
-
-    // 短すぎるパーツを前のパーツに結合
-    const merged: string[] = [];
-    for (const part of parts) {
-        if (merged.length > 0 && part.trim().length <= 3) {
-            merged[merged.length - 1] += part;
-        } else {
-            merged.push(part);
-        }
-    }
-
-    return merged.length >= 2 ? merged : [text];
-}
-
-function splitTextEvenly(text: string, numParts: number): string[] {
-    if (numParts <= 1) return [text];
-    const charsPerPart = Math.ceil(text.length / numParts);
-    const parts: string[] = [];
-    for (let i = 0; i < text.length; i += charsPerPart) {
-        parts.push(text.slice(i, i + charsPerPart));
-    }
-    return parts;
 }
 
 // 音声文字起こしAPI（OpenAI Whisper API）
@@ -482,9 +515,9 @@ app.post("/api/transcribe", async (req, res) => {
 
         console.log(`✅ OpenAI Whisper API: ${subtitles.length}個のセグメントを検出`);
 
-        // 長いセグメントを句読点で分割（4秒超のセグメントを対象）
+        // 長いセグメントを文法的な区切りで分割（3.5秒超 or 35文字超）
         const beforeCount = subtitles.length;
-        subtitles = splitLongSegments(subtitles, 4.0);
+        subtitles = splitLongSegments(subtitles);
         if (subtitles.length !== beforeCount) {
             console.log(`✂️ セグメント分割: ${beforeCount}個 → ${subtitles.length}個`);
         }

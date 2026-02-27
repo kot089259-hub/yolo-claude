@@ -208,45 +208,143 @@ function estimateTextWidth(text: string, fontSize: number): number {
     return width;
 }
 
-// ── 長いテキストを手動改行 (ASS \N) ──
-// maxWidthPx: テキストが収まるべき最大幅（ピクセル）
-function wrapText(text: string, fontSize: number, maxWidthPx: number): string {
-    if (estimateTextWidth(text, fontSize) <= maxWidthPx) return text;
+// ── 改行位置のスコアリング（日本語文法対応） ──
+// pos: テキスト内のインデックス（pos-1とposの間で改行する）
+function scoreBreakPosition(text: string, pos: number): number {
+    if (pos <= 0 || pos >= text.length) return -1000;
 
+    const before = text[pos - 1];
+
+    // 文末句読点の後 → 最高スコア
+    if ('。！？!?'.includes(before)) return 100;
+
+    // 読点・カンマの後
+    if ('、,，'.includes(before)) return 80;
+
+    // 閉じ括弧の後
+    if ('」』）】〉》'.includes(before)) return 75;
+
+    // スペースの後
+    if (before === ' ' || before === '　') return 60;
+
+    // 複数文字の接続表現の後（長い順にチェック）
+    const connectors4 = ['けれど', 'ながら', 'ですが', 'ますが', 'ところ', 'ように', 'ことが', 'ことを', 'として'];
+    for (const c of connectors4) {
+        if (pos >= c.length && text.slice(pos - c.length, pos) === c) return 70;
+    }
+    const connectors2 = ['けど', 'から', 'ので', 'のに', 'ても', 'って', 'たら', 'まで', 'より', 'ては', 'した', 'する', 'ある', 'いる', 'ない', 'った', 'ます', 'です'];
+    for (const c of connectors2) {
+        if (pos >= c.length && text.slice(pos - c.length, pos) === c) return 60;
+    }
+
+    // 単独助詞の後（前が漢字・カタカナなら助詞の可能性が高い）
+    if ('はがをにでともへの'.includes(before) && pos >= 2) {
+        const prev = text[pos - 2];
+        const code = prev.codePointAt(0) || 0;
+        const isKanjiOrKata =
+            (code >= 0x4E00 && code <= 0x9FFF) ||
+            (code >= 0x30A0 && code <= 0x30FF) ||
+            (code >= 0x3400 && code <= 0x4DBF);
+        if (isKanjiOrKata) return 50;
+    }
+
+    // て形の後（前がひらがなならて形の可能性）
+    if ((before === 'て' || before === 'で') && pos >= 2) {
+        const prev = text[pos - 2];
+        const code = prev.codePointAt(0) || 0;
+        if (code >= 0x3040 && code <= 0x309F) return 40;
+    }
+
+    // カタカナ語の境界（カタカナ→非カタカナ）
+    const beforeCode = before.codePointAt(0) || 0;
+    const afterCode = text[pos].codePointAt(0) || 0;
+    const beforeIsKatakana = beforeCode >= 0x30A0 && beforeCode <= 0x30FF;
+    const afterIsKatakana = afterCode >= 0x30A0 && afterCode <= 0x30FF;
+    if (beforeIsKatakana && !afterIsKatakana && before !== 'ー') return 30;
+
+    // ひらがな→漢字の境界（新しい語の始まり）
+    const beforeIsHiragana = beforeCode >= 0x3040 && beforeCode <= 0x309F;
+    const afterIsKanji = (afterCode >= 0x4E00 && afterCode <= 0x9FFF);
+    if (beforeIsHiragana && afterIsKanji) return 25;
+
+    // その他の位置（改行可能だがスコア低い）
+    return 5;
+}
+
+// ── 日本語テキストのスマート改行 (ASS \N 挿入) ──
+// isBold: 太字の場合は幅を約8%増しで計算
+function smartLineBreak(text: string, fontSize: number, maxWidthPx: number, isBold = false): string {
+    // 安全マージン: フォントレンダリング誤差を吸収（5%）+ 太字なら追加8%
+    const safetyFactor = isBold ? 0.87 : 0.95;
+    const safeMaxWidth = maxWidthPx * safetyFactor;
+    const totalWidth = estimateTextWidth(text, fontSize);
+
+    // 1行に収まる場合はそのまま（安全マージン込みで判定）
+    if (totalWidth <= safeMaxWidth) return text;
+
+    // 2行分割: 各候補位置をスコアリングして最適な改行位置を探す
+    const idealFirstWidth = totalWidth / 2;
+    let bestPos = -1;
+    let bestScore = -Infinity;
+
+    for (let i = 1; i < text.length; i++) {
+        const firstW = estimateTextWidth(text.slice(0, i), fontSize);
+
+        // 1行目が安全幅を超えたらこれ以降は不要
+        if (firstW > safeMaxWidth) break;
+
+        // 2行目の幅チェック（安全マージン込み）
+        const secondW = estimateTextWidth(text.slice(i), fontSize);
+        if (secondW > safeMaxWidth) continue;
+
+        // バランス比（0.2〜0.8の範囲外は除外）
+        const ratio = firstW / totalWidth;
+        if (ratio < 0.2 || ratio > 0.8) continue;
+
+        // バランスペナルティ（中央から離れるほど大）
+        const balancePenalty = Math.abs(ratio - 0.5) * 80;
+
+        // 文法スコア
+        const grammarScore = scoreBreakPosition(text, i);
+
+        // 総合スコア = 文法 − バランスペナルティ
+        const score = grammarScore - balancePenalty;
+
+        if (score > bestScore) {
+            bestScore = score;
+            bestPos = i;
+        }
+    }
+
+    if (bestPos > 0) {
+        const line1 = text.slice(0, bestPos);
+        const line2 = text.slice(bestPos);
+
+        // 2行目がまだ長い場合は再帰的に分割（3行以上）
+        if (estimateTextWidth(line2, fontSize) > safeMaxWidth) {
+            return line1 + String.raw`\N` + smartLineBreak(line2, fontSize, maxWidthPx, isBold);
+        }
+        return line1 + String.raw`\N` + line2;
+    }
+
+    // フォールバック: 幅ベースで強制改行（安全マージン込み）
     const lines: string[] = [];
     let remaining = text;
-
     while (remaining.length > 0) {
-        if (estimateTextWidth(remaining, fontSize) <= maxWidthPx) {
+        if (estimateTextWidth(remaining, fontSize) <= safeMaxWidth) {
             lines.push(remaining);
             break;
         }
-
-        // 1文字ずつ追加して幅がmaxWidthPxを超える位置を探す
         let breakAt = remaining.length;
         for (let i = 1; i <= remaining.length; i++) {
-            if (estimateTextWidth(remaining.slice(0, i), fontSize) > maxWidthPx) {
-                breakAt = i - 1;
+            if (estimateTextWidth(remaining.slice(0, i), fontSize) > safeMaxWidth) {
+                breakAt = Math.max(1, i - 1);
                 break;
             }
         }
-        if (breakAt < 1) breakAt = 1;
-
-        // 自然な切れ目（句読点等）を優先
-        let naturalBreak = -1;
-        for (let i = breakAt; i >= Math.max(1, Math.floor(breakAt * 0.6)); i--) {
-            const ch = remaining[i - 1]; // i-1の文字の後で切る
-            if ('、。！？」』）】!?,. '.includes(ch)) {
-                naturalBreak = i;
-                break;
-            }
-        }
-        if (naturalBreak > 0) breakAt = naturalBreak;
-
         lines.push(remaining.slice(0, breakAt));
         remaining = remaining.slice(breakAt);
     }
-
     return lines.join(String.raw`\N`);
 }
 
@@ -341,8 +439,10 @@ ${subtitles
                     overrides += `\\fad(300,0)`;
                 }
 
-                // libassのWrapStyle:0（スマート折り返し）に任せる
-                const text = overrides ? `{${overrides}}${sub.text}` : sub.text;
+                // スマート改行: 日本語文法を考慮した最適な改行位置で \N を挿入
+                const maxTextWidth = videoWidth - marginLR * 2;
+                const wrappedText = smartLineBreak(sub.text, segSize, maxTextWidth, segBold);
+                const text = overrides ? `{${overrides}}${wrappedText}` : wrappedText;
                 return `Dialogue: 0,${toASSTime(sub.start)},${toASSTime(sub.end)},Default,,0,0,0,,${text}`;
             })
             .join("\n")}
