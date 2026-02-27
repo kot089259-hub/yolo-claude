@@ -281,7 +281,7 @@ export function generateASSFile(
 
     // 縦動画対応: マージンを動画幅に応じて動的に計算
     const isVertical = videoHeight > videoWidth;
-    const marginLR = Math.round(videoWidth * 0.01); // 左右マージン: 幅の1%
+    const marginLR = Math.round(videoWidth * 0.03); // 左右マージン: 幅の3%
     const marginV = Math.round(videoHeight * 0.03);  // 上下マージン: 高さの3%
 
     // フォントサイズ — PlayResX/PlayResYが出力解像度に設定されているため
