@@ -8,8 +8,8 @@
   <link
     href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700;900&family=Noto+Serif+JP:wght@400;700&family=M+PLUS+1p:wght@400;700&family=M+PLUS+Rounded+1c:wght@400;700&family=Kosugi+Maru&family=Sawarabi+Gothic&family=Sawarabi+Mincho&family=Zen+Kaku+Gothic+New:wght@400;700&family=Zen+Maru+Gothic:wght@400;700&family=Zen+Old+Mincho:wght@400;700&family=Shippori+Mincho:wght@400;700&family=Kiwi+Maru:wght@400;700&family=Hachi+Maru+Pop&family=Yusei+Magic&family=Dela+Gothic+One&family=Reggae+One&family=RocknRoll+One&family=Stick&family=DotGothic16&family=Potta+One&family=Rampart+One&family=Train+One&family=Roboto:wght@400;700&family=Open+Sans:wght@400;700&family=Montserrat:wght@400;700&family=Lato:wght@400;700&family=Inter:wght@400;700&display=swap"
     rel="stylesheet">
-  <script src="https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.10/dist/umd/ffmpeg.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@ffmpeg/util@0.12.1/dist/umd/util.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.15/dist/umd/ffmpeg.min.js" async></script>
+  <script src="https://cdn.jsdelivr.net/npm/@ffmpeg/util@0.12.1/dist/umd/index.js" async></script>
   <style>
     * {
       margin: 0;
@@ -1960,7 +1960,7 @@
         <div class="step-text">
           <div class="step-title">動画を圧縮中...</div>
           <div class="step-detail" id="compressDetail"></div>
-          <div class="step-progress" id="compressProgressBar" style="display:none">
+          <div class="step-progress" id="compressProgressBar">
             <div class="step-progress-fill" id="compressProgressFill"></div>
           </div>
           <div class="step-stats" id="compressStats"></div>
@@ -1971,7 +1971,7 @@
         <div class="step-text">
           <div class="step-title">アップロード中...</div>
           <div class="step-detail" id="uploadDetail"></div>
-          <div class="step-progress" id="uploadProgressBar" style="display:none">
+          <div class="step-progress" id="uploadProgressBar">
             <div class="step-progress-fill" id="uploadProgressFill"></div>
           </div>
           <div class="step-stats" id="uploadStats"></div>
@@ -2676,13 +2676,12 @@
     async function loadFFmpeg() {
       if (ffmpegLoaded && ffmpegInstance) return ffmpegInstance;
       const { FFmpeg } = FFmpegWASM;
+      const { toBlobURL } = FFmpegUtil;
       ffmpegInstance = new FFmpeg();
-      ffmpegInstance.on('log', ({ message }) => {
-        console.log('[ffmpeg]', message);
-      });
+      const baseURL = 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/umd';
       await ffmpegInstance.load({
-        coreURL: 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/umd/ffmpeg-core.js',
-        wasmURL: 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/umd/ffmpeg-core.wasm',
+        coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, 'text/javascript'),
+        wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, 'application/wasm'),
       });
       ffmpegLoaded = true;
       return ffmpegInstance;
@@ -2700,30 +2699,17 @@
       document.getElementById('compressDetail').textContent =
         `${file.name} (${(file.size / 1024 / 1024).toFixed(1)}MB) → 圧縮中...`;
 
-      const progressBar = document.getElementById('compressProgressBar');
       const progressFill = document.getElementById('compressProgressFill');
       const statsEl = document.getElementById('compressStats');
-      progressBar.style.display = '';
 
       try {
         const ffmpeg = await loadFFmpeg();
 
-        // Track progress via time output
-        let duration = 0;
-        ffmpeg.on('log', ({ message }) => {
-          // Parse duration from "Duration: HH:MM:SS.xx"
-          const durMatch = message.match(/Duration:\s*(\d+):(\d+):(\d+\.\d+)/);
-          if (durMatch) {
-            duration = parseInt(durMatch[1]) * 3600 + parseInt(durMatch[2]) * 60 + parseFloat(durMatch[3]);
-          }
-          // Parse progress from "time=HH:MM:SS.xx"
-          const timeMatch = message.match(/time=\s*(\d+):(\d+):(\d+\.\d+)/);
-          if (timeMatch && duration > 0) {
-            const currentTime = parseInt(timeMatch[1]) * 3600 + parseInt(timeMatch[2]) * 60 + parseFloat(timeMatch[3]);
-            const pct = Math.min(99, Math.round((currentTime / duration) * 100));
-            progressFill.style.width = pct + '%';
-            statsEl.textContent = `${pct}% 完了`;
-          }
+        // Track progress via progress event
+        ffmpeg.on('progress', ({ progress }) => {
+          const pct = Math.min(99, Math.max(0, Math.round(progress * 100)));
+          progressFill.style.width = pct + '%';
+          statsEl.textContent = `${pct}% 完了`;
         });
 
         const inputName = 'input' + (file.name.endsWith('.mov') ? '.mov' : '.mp4');
@@ -2784,10 +2770,8 @@
     function uploadWithProgress(url, formData) {
       return new Promise((resolve, reject) => {
         const xhr = new XMLHttpRequest();
-        const progressBar = document.getElementById('uploadProgressBar');
         const progressFill = document.getElementById('uploadProgressFill');
         const statsEl = document.getElementById('uploadStats');
-        progressBar.style.display = '';
 
         let startTime = Date.now();
 
@@ -2923,10 +2907,8 @@
       document.getElementById('stepCompress').className = 'step';
       document.getElementById('stepCompress').querySelector('.step-icon').textContent = '📦';
       document.getElementById('compressDetail').textContent = '';
-      document.getElementById('compressProgressBar').style.display = 'none';
       document.getElementById('compressProgressFill').style.width = '0%';
       document.getElementById('compressStats').textContent = '';
-      document.getElementById('uploadProgressBar').style.display = 'none';
       document.getElementById('uploadProgressFill').style.width = '0%';
       document.getElementById('uploadStats').textContent = '';
       document.getElementById('stepUpload').className = 'step';
