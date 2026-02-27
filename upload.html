@@ -4229,10 +4229,32 @@ echo "✅ レンダリング完了: $OUTPUT"
           status.textContent = '\u203b FFmpeg\u3067\u30ec\u30f3\u30c0\u30ea\u30f3\u30b0\u4e2d' + '.'.repeat(dots + 1);
         }, 1000);
 
+        const POLL_TIMEOUT_MS = 10 * 60 * 1000; // 10分タイムアウト
+        const pollStartTime = Date.now();
+        let notFoundCount = 0;
+
         const jobResult = await new Promise((resolve, reject) => {
           const check = async () => {
+            // タイムアウトチェック
+            if (Date.now() - pollStartTime > POLL_TIMEOUT_MS) {
+              clearInterval(pollInterval);
+              reject(new Error('レンダリングがタイムアウトしました（10分）'));
+              return;
+            }
             try {
               const statusRes = await fetch(`${SERVER}/api/render-status/${jobId}`);
+              if (!statusRes.ok) {
+                notFoundCount++;
+                console.warn(`render-status ${statusRes.status} (${notFoundCount}回目)`);
+                if (notFoundCount >= 10) {
+                  clearInterval(pollInterval);
+                  reject(new Error('ジョブステータスの取得に繰り返し失敗しました'));
+                  return;
+                }
+                setTimeout(check, 3000);
+                return;
+              }
+              notFoundCount = 0;
               const job = await statusRes.json();
               if (job.status === 'done') {
                 clearInterval(pollInterval);
@@ -4248,10 +4270,16 @@ echo "✅ レンダリング完了: $OUTPUT"
                 setTimeout(check, 3000);
               }
             } catch (e) {
+              notFoundCount++;
+              if (notFoundCount >= 10) {
+                clearInterval(pollInterval);
+                reject(new Error('サーバーとの通信に失敗しました'));
+                return;
+              }
               setTimeout(check, 5000);
             }
           };
-          setTimeout(check, 3000);
+          setTimeout(check, 2000);
         });
 
         videoSlots[renderSlotIdx].renderStatus = 'done';
@@ -4355,9 +4383,17 @@ echo "✅ レンダリング完了: $OUTPUT"
     // ── 全ジョブポーリング ──
     async function pollAllRenderJobs(slotIndices) {
       const statusInfo = document.getElementById('queueStatusInfo');
+      const BATCH_TIMEOUT_MS = 15 * 60 * 1000; // 15分タイムアウト
+      const startTime = Date.now();
 
       return new Promise((resolve) => {
         const poll = async () => {
+          if (Date.now() - startTime > BATCH_TIMEOUT_MS) {
+            statusInfo.textContent = 'タイムアウト — 一部未完了';
+            resolve();
+            return;
+          }
+
           let allDone = true;
           let doneCount = 0;
           const total = slotIndices.length;
@@ -4373,6 +4409,7 @@ echo "✅ レンダリング完了: $OUTPUT"
             allDone = false;
             try {
               const res = await fetch(`${SERVER}/api/render-status/${slot.renderJobId}`);
+              if (!res.ok) continue; // リトライ
               const job = await res.json();
               if (job.status === 'done') {
                 slot.renderStatus = 'done';
@@ -4399,7 +4436,7 @@ echo "✅ レンダリング完了: $OUTPUT"
             setTimeout(poll, 3000);
           }
         };
-        setTimeout(poll, 3000);
+        setTimeout(poll, 2000);
       });
     }
 

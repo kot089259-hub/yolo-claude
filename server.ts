@@ -877,6 +877,15 @@ function executeRender(jobId: string, filename: string) {
             const { spawn } = await import("child_process");
             const child = spawn("sh", ["-c", command], { stdio: ["ignore", "pipe", "pipe"] });
 
+            // FFmpegタイムアウト（10分）
+            const FFMPEG_TIMEOUT_MS = 10 * 60 * 1000;
+            let killed = false;
+            const timer = setTimeout(() => {
+                killed = true;
+                console.error(`⏰ FFmpegタイムアウト (job: ${jobId}) — プロセスを強制終了`);
+                child.kill("SIGKILL");
+            }, FFMPEG_TIMEOUT_MS);
+
             child.stderr?.on("data", (data: Buffer) => {
                 const str = data.toString();
                 if (str.includes("frame=") || str.includes("Error") || str.includes("error")) {
@@ -885,11 +894,17 @@ function executeRender(jobId: string, filename: string) {
             });
 
             child.on("close", (code: number | null) => {
+                clearTimeout(timer);
                 activeRenders--;
                 if (fs.existsSync(assPath)) {
                     try { fs.unlinkSync(assPath); } catch { }
                 }
-                if (code === 0) {
+                if (killed) {
+                    setJobStatus(jobId, {
+                        status: "error",
+                        error: "FFmpegがタイムアウトしました（10分）",
+                    });
+                } else if (code === 0) {
                     console.log(`✅ レンダリング完了 (job: ${jobId})`);
                     setJobStatus(jobId, {
                         status: "done",
@@ -907,6 +922,7 @@ function executeRender(jobId: string, filename: string) {
             });
 
             child.on("error", (err: Error) => {
+                clearTimeout(timer);
                 activeRenders--;
                 console.error(`❌ FFmpegエラー (job: ${jobId}):`, err.message);
                 setJobStatus(jobId, { status: "error", error: err.message });
