@@ -162,7 +162,7 @@ app.get("/health", (_req, res) => {
     const mem = process.memoryUsage();
     res.json({
         status: "ok",
-        version: "2026-02-24-v3",
+        version: "2026-02-27-v1",
         uptime: Math.round(process.uptime()),
         memory: {
             heapUsedMB: Math.round(mem.heapUsed / 1024 / 1024),
