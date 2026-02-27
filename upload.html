@@ -2736,44 +2736,37 @@
 
     let videoSlots = Array.from({ length: MAX_VIDEOS }, () => createEmptySlot());
 
-    // 既存コードとの互換性: グローバル変数をアクティブスロットに透過ルーティング
-    Object.defineProperties(window, {
-      currentFilename: {
-        get() { return videoSlots[activeSlotIndex].filename; },
-        set(v) { videoSlots[activeSlotIndex].filename = v; },
-        configurable: true
-      },
-      currentSubtitles: {
-        get() { return videoSlots[activeSlotIndex].subtitles; },
-        set(v) { videoSlots[activeSlotIndex].subtitles = v; },
-        configurable: true
-      },
-      currentStyle: {
-        get() { return videoSlots[activeSlotIndex].style; },
-        set(v) { videoSlots[activeSlotIndex].style = v; },
-        configurable: true
-      },
-      audioTracks: {
-        get() { return videoSlots[activeSlotIndex].audioTracks; },
-        set(v) { videoSlots[activeSlotIndex].audioTracks = v; },
-        configurable: true
-      },
-      editSettings: {
-        get() { return videoSlots[activeSlotIndex].editSettings; },
-        set(v) { videoSlots[activeSlotIndex].editSettings = v; },
-        configurable: true
-      },
-      undoStack: {
-        get() { return videoSlots[activeSlotIndex].undoStack; },
-        set(v) { videoSlots[activeSlotIndex].undoStack = v; },
-        configurable: true
-      },
-      redoStack: {
-        get() { return videoSlots[activeSlotIndex].redoStack; },
-        set(v) { videoSlots[activeSlotIndex].redoStack = v; },
-        configurable: true
-      }
-    });
+    // グローバル変数: アクティブスロットのデータを保持（switchSlot時にsync）
+    var currentFilename = "";
+    var currentSubtitles = [];
+    var currentStyle = videoSlots[0].style;
+    var audioTracks = [];
+    var editSettings = videoSlots[0].editSettings;
+    var undoStack = [];
+    var redoStack = [];
+
+    // スロット ↔ グローバル変数の同期
+    function syncToSlot() {
+      const slot = videoSlots[activeSlotIndex];
+      slot.filename = currentFilename;
+      slot.subtitles = currentSubtitles;
+      slot.style = currentStyle;
+      slot.audioTracks = audioTracks;
+      slot.editSettings = editSettings;
+      slot.undoStack = undoStack;
+      slot.redoStack = redoStack;
+    }
+
+    function syncFromSlot() {
+      const slot = videoSlots[activeSlotIndex];
+      currentFilename = slot.filename;
+      currentSubtitles = slot.subtitles;
+      currentStyle = slot.style;
+      audioTracks = slot.audioTracks;
+      editSettings = slot.editSettings;
+      undoStack = slot.undoStack;
+      redoStack = slot.redoStack;
+    }
 
     // ── プレビュー字幕オーバーレイ ──
     function updateSubtitleOverlay() {
@@ -2850,7 +2843,7 @@
     // DOMロード後に設定
     document.addEventListener('DOMContentLoaded', setupVideoOverlay);
 
-    // Undo/Redo (undoStack/redoStack are routed via Object.defineProperties to videoSlots)
+    // Undo/Redo
     const MAX_UNDO = 50;
 
     function takeSnapshot() {
@@ -2870,7 +2863,10 @@
       currentStyle = snap.currentStyle;
       audioTracks = snap.audioTracks;
       editSettings = snap.editSettings;
+      syncToSlot();
       refreshUI();
+      populateStyleForm();
+      populateEditForm();
       updateUndoButtons();
     }
 
@@ -2882,7 +2878,10 @@
       currentStyle = snap.currentStyle;
       audioTracks = snap.audioTracks;
       editSettings = snap.editSettings;
+      syncToSlot();
       refreshUI();
+      populateStyleForm();
+      populateEditForm();
       updateUndoButtons();
     }
 
@@ -2934,11 +2933,13 @@
       if (index === activeSlotIndex) return;
       if (index < 0 || index >= MAX_VIDEOS) return;
 
-      // 現在のフォーム値をスロットに保存
+      // 現在のフォーム値をグローバル変数に反映してからスロットに保存
       try { updateStyle(); } catch(e) {}
       try { updateEditSettings(); } catch(e) {}
+      syncToSlot();
 
       activeSlotIndex = index;
+      syncFromSlot();
       const slot = videoSlots[activeSlotIndex];
 
       // ビデオプレビュー切り替え
@@ -3355,6 +3356,16 @@
     }
 
     async function processFile(file) {
+      // 現在のスロットが使用中なら次の空きスロットを自動選択
+      if (videoSlots[activeSlotIndex].uploaded || videoSlots[activeSlotIndex].processing) {
+        const emptyIdx = videoSlots.findIndex(s => !s.uploaded && !s.processing);
+        if (emptyIdx !== -1 && emptyIdx !== activeSlotIndex) {
+          syncToSlot();
+          activeSlotIndex = emptyIdx;
+          syncFromSlot();
+          renderSlotList();
+        }
+      }
       const targetSlot = activeSlotIndex;
       videoSlots[targetSlot].processing = true;
 
@@ -3396,6 +3407,7 @@
         const uploadData = await uploadWithProgress(`${SERVER}/api/upload`, formData);
         videoSlots[targetSlot].filename = uploadData.filename;
         videoSlots[targetSlot].uploaded = true;
+        if (activeSlotIndex === targetSlot) currentFilename = uploadData.filename;
         setStep("stepUpload", "done");
 
         // Step 3: Transcribe
@@ -3419,8 +3431,9 @@
         videoSlots[targetSlot].processing = false;
         renderSlotList();
 
-        // アクティブスロットが変わっていなければUIを更新
+        // アクティブスロットが変わっていなければグローバル変数を同期してUIを更新
         if (activeSlotIndex === targetSlot) {
+          syncFromSlot();
           document.getElementById("progressSection").classList.remove("active");
           document.getElementById("resultSection").classList.add("active");
           displayResults();
@@ -3603,6 +3616,9 @@
 
     async function saveAll() {
       try {
+        try { updateStyle(); } catch(e) {}
+        try { updateEditSettings(); } catch(e) {}
+        syncToSlot();
         await Promise.all([saveSubtitles(), saveStyle(), saveAudioTracks(), saveEditSettings()]);
         showToast();
       } catch (error) {
@@ -3611,6 +3627,9 @@
     }
 
     async function saveAndOpenStudio() {
+      try { updateStyle(); } catch(e) {}
+      try { updateEditSettings(); } catch(e) {}
+      syncToSlot();
       const w = window.open("http://localhost:3000/MyComp", "_blank");
       try {
         await Promise.all([saveSubtitles(), saveStyle(), saveAudioTracks(), saveEditSettings()]);
@@ -4192,7 +4211,10 @@ echo "✅ レンダリング完了: $OUTPUT"
       renderSlotList();
 
       try {
-        // ステップ1: 設定保存
+        // ステップ1: 設定保存（グローバル変数をスロットに同期してから保存）
+        try { updateStyle(); } catch(e) {}
+        try { updateEditSettings(); } catch(e) {}
+        syncToSlot();
         try { await saveSubtitles(); } catch (e) { throw new Error('字幕保存失敗: ' + e.message); }
         try { await saveStyle(); } catch (e) { throw new Error('スタイル保存失敗: ' + e.message); }
         try { await saveAudioTracks(); } catch (e) { throw new Error('オーディオ保存失敗: ' + e.message); }
@@ -4307,9 +4329,10 @@ echo "✅ レンダリング完了: $OUTPUT"
       btn.disabled = true;
       btn.textContent = '処理中...';
 
-      // 現在のフォーム値を保存
+      // 現在のフォーム値をグローバル変数に反映してスロットに同期
       try { updateStyle(); } catch(e) {}
       try { updateEditSettings(); } catch(e) {}
+      syncToSlot();
 
       // アップロード済みスロットのファイル名を収集 & 設定を保存
       const uploadedSlots = [];
@@ -4493,9 +4516,10 @@ echo "✅ レンダリング完了: $OUTPUT"
 
     // Project Save/Load
     function downloadProject() {
-      // 現在のフォーム値を保存
+      // 現在のフォーム値をグローバル変数に反映してスロットに同期
       try { updateStyle(); } catch(e) {}
       try { updateEditSettings(); } catch(e) {}
+      syncToSlot();
 
       const slots = videoSlots.map(slot => ({
         filename: slot.filename,
@@ -4559,6 +4583,9 @@ echo "✅ レンダリング完了: $OUTPUT"
               slot.uploaded = true;
             }
           }
+
+          // グローバル変数を同期
+          syncFromSlot();
 
           // ビデオプレビュー更新
           const slot = videoSlots[activeSlotIndex];
