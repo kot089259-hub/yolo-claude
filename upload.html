@@ -2837,6 +2837,58 @@
       redoStack = slot.redoStack;
     }
 
+    // ── テキスト幅推定（ASS側と同じロジック） ──
+    function estimateTextWidth(text, fontSize) {
+      let width = 0;
+      for (const ch of text) {
+        const code = ch.codePointAt(0) || 0;
+        if (
+          (code >= 0x3000 && code <= 0x9FFF) ||
+          (code >= 0xF900 && code <= 0xFAFF) ||
+          (code >= 0xFF01 && code <= 0xFF60) ||
+          (code >= 0x20000 && code <= 0x2FA1F)
+        ) {
+          width += fontSize;
+        } else {
+          width += fontSize * 0.55;
+        }
+      }
+      return width;
+    }
+
+    // ── テキスト折り返し（ASS側のwrapTextと同一ロジック） ──
+    function wrapSubText(text, fontSize, maxWidthPx) {
+      if (estimateTextWidth(text, fontSize) <= maxWidthPx) return text;
+      const lines = [];
+      let remaining = text;
+      while (remaining.length > 0) {
+        if (estimateTextWidth(remaining, fontSize) <= maxWidthPx) {
+          lines.push(remaining);
+          break;
+        }
+        let breakAt = remaining.length;
+        for (let i = 1; i <= remaining.length; i++) {
+          if (estimateTextWidth(remaining.slice(0, i), fontSize) > maxWidthPx) {
+            breakAt = i - 1;
+            break;
+          }
+        }
+        if (breakAt < 1) breakAt = 1;
+        let naturalBreak = -1;
+        for (let i = breakAt; i >= Math.max(1, Math.floor(breakAt * 0.6)); i--) {
+          const ch = remaining[i - 1];
+          if ('、。！？」』）】!?,. '.includes(ch)) {
+            naturalBreak = i;
+            break;
+          }
+        }
+        if (naturalBreak > 0) breakAt = naturalBreak;
+        lines.push(remaining.slice(0, breakAt));
+        remaining = remaining.slice(breakAt);
+      }
+      return lines.join('\n');
+    }
+
     // ── 映像の実際の表示エリアを計算（黒帯を除く） ──
     function getVideoDisplayArea(video) {
       const rect = video.getBoundingClientRect();
@@ -2924,6 +2976,15 @@
           posClass = pos;
         }
 
+        // ASS側と同じロジックでテキストを折り返し（renderW基準の90%）
+        const maxTextWidthPx = renderW * 0.90;
+        const wrappedText = wrapSubText(sub.text, size, maxTextWidthPx);
+        const displayText = wrappedText.split('\n').map(line => {
+          const span = document.createElement('span');
+          span.textContent = line;
+          return span.textContent;
+        }).join('<br>');
+
         html += `<div class="sub-line ${posClass}" style="${wrapperPos}">
           <div class="sub-text-inner" style="
             background:${bgRgba};
@@ -2937,12 +2998,10 @@
             line-height:1.4;
             text-shadow:0 ${Math.round(2 * scale)}px ${Math.round(4 * scale)}px rgba(0,0,0,0.5);
             white-space:pre-wrap;
-            word-break:keep-all;
-            overflow-wrap:break-word;
             max-width:90%;
             box-sizing:border-box;
             ${stroke}
-          ">${sub.text}</div>
+          ">${wrappedText}</div>
         </div>`;
       });
 

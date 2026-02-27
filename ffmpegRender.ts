@@ -188,35 +188,64 @@ export function getVideoInfo(videoPath: string): { width: number; height: number
     return { width, height, duration, fps };
 }
 
+// ── テキスト幅の推定（ピクセル単位） ──
+function estimateTextWidth(text: string, fontSize: number): number {
+    let width = 0;
+    for (const ch of text) {
+        const code = ch.codePointAt(0) || 0;
+        // CJK統合漢字、ひらがな、カタカナ、全角記号 → 全角幅
+        if (
+            (code >= 0x3000 && code <= 0x9FFF) ||  // CJK, ひらがな, カタカナ, 記号
+            (code >= 0xF900 && code <= 0xFAFF) ||  // CJK互換漢字
+            (code >= 0xFF01 && code <= 0xFF60) ||  // 全角英数記号
+            (code >= 0x20000 && code <= 0x2FA1F)   // CJK拡張
+        ) {
+            width += fontSize;
+        } else {
+            width += fontSize * 0.55; // 半角文字
+        }
+    }
+    return width;
+}
+
 // ── 長いテキストを手動改行 (ASS \N) ──
-function wrapText(text: string, fontSize: number, videoWidth: number, marginLR: number): string {
-    // 利用可能な幅 (マージン除く)
-    const availableWidth = videoWidth - marginLR * 2;
-    // 1文字あたりの推定幅（CJK文字は全角 ≈ fontSize、英数字は半角 ≈ fontSize * 0.6）
-    const avgCharWidth = fontSize * 0.8; // CJK文字の実際の描画幅に近い値
-    const charsPerLine = Math.max(4, Math.floor(availableWidth / avgCharWidth));
+// maxWidthPx: テキストが収まるべき最大幅（ピクセル）
+function wrapText(text: string, fontSize: number, maxWidthPx: number): string {
+    if (estimateTextWidth(text, fontSize) <= maxWidthPx) return text;
 
-    if (text.length <= charsPerLine) return text;
-
-    // 手動で改行を挿入
     const lines: string[] = [];
     let remaining = text;
-    while (remaining.length > charsPerLine) {
-        // 、。！？など自然な切れ目を探す
-        let breakAt = -1;
-        for (let i = charsPerLine; i >= Math.floor(charsPerLine * 0.6); i--) {
-            const ch = remaining[i];
-            if ('、。！？」』）】!?,. '.includes(ch)) {
-                breakAt = i + 1;
+
+    while (remaining.length > 0) {
+        if (estimateTextWidth(remaining, fontSize) <= maxWidthPx) {
+            lines.push(remaining);
+            break;
+        }
+
+        // 1文字ずつ追加して幅がmaxWidthPxを超える位置を探す
+        let breakAt = remaining.length;
+        for (let i = 1; i <= remaining.length; i++) {
+            if (estimateTextWidth(remaining.slice(0, i), fontSize) > maxWidthPx) {
+                breakAt = i - 1;
                 break;
             }
         }
-        if (breakAt === -1) breakAt = charsPerLine;
+        if (breakAt < 1) breakAt = 1;
+
+        // 自然な切れ目（句読点等）を優先
+        let naturalBreak = -1;
+        for (let i = breakAt; i >= Math.max(1, Math.floor(breakAt * 0.6)); i--) {
+            const ch = remaining[i - 1]; // i-1の文字の後で切る
+            if ('、。！？」』）】!?,. '.includes(ch)) {
+                naturalBreak = i;
+                break;
+            }
+        }
+        if (naturalBreak > 0) breakAt = naturalBreak;
 
         lines.push(remaining.slice(0, breakAt));
         remaining = remaining.slice(breakAt);
     }
-    if (remaining.length > 0) lines.push(remaining);
 
     return lines.join(String.raw`\N`);
 }
@@ -265,7 +294,7 @@ Title: Video Subtitles
 ScriptType: v4.00+
 PlayResX: ${videoWidth}
 PlayResY: ${videoHeight}
-WrapStyle: 1
+WrapStyle: 2
 
 [V4+ Styles]
 Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
@@ -312,8 +341,9 @@ ${subtitles
                     overrides += `\\fad(300,0)`;
                 }
 
-                // 実際のレンダリングサイズでwrapTextを計算
-                const text = overrides ? `{${overrides}}${wrapText(sub.text, segSize, videoWidth, marginLR)}` : wrapText(sub.text, segSize, videoWidth, marginLR);
+                // テキスト折り返し: 映像幅の90%をmax-widthとして計算（プレビューCSS max-width:90%と一致）
+                const maxTextWidth = videoWidth * 0.90;
+                const text = overrides ? `{${overrides}}${wrapText(sub.text, segSize, maxTextWidth)}` : wrapText(sub.text, segSize, maxTextWidth);
                 return `Dialogue: 0,${toASSTime(sub.start)},${toASSTime(sub.end)},Default,,0,0,0,,${text}`;
             })
             .join("\n")}
