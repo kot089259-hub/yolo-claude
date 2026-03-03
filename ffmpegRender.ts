@@ -611,7 +611,7 @@ export function prepareFFmpegRender(opts: RenderOptions): { command: string; ass
         }
         if (audioInputs.length > 1) {
             audioOut = "aout";
-            filterParts.push(`${audioInputs.join("")}amix=inputs=${audioInputs.length}:duration=first[${audioOut}]`);
+            filterParts.push(`${audioInputs.join("")}amix=inputs=${audioInputs.length}:duration=first:normalize=0[${audioOut}]`);
         }
     }
 
