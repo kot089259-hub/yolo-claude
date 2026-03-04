@@ -597,7 +597,8 @@ export function prepareFFmpegRender(opts: RenderOptions): { command: string; ass
     // オーディオミックス（amergeベース：元動画の音声を維持しつつ追加音声を重ねる）
     let audioOut = "0:a";
     if (audioTracks.length > 0) {
-        let currentAudio = "0:a";
+        filterParts.push(`[0:a]volume=5.0[origboost]`);
+        let currentAudio = "origboost";
         for (let i = 0; i < audioTracks.length; i++) {
             const track = audioTracks[i];
             const audioPath = path.join(opts.publicDir, track.filename);
