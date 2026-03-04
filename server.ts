@@ -1149,22 +1149,23 @@ function executeRender(jobId: string, filename: string) {
                 // 映像チェーン: [0:v] → filters → [vout]
                 complexParts.push(`[0:v]${videoFilters.join(',')}[vout]`);
 
-                // 元動画の音声
+                // 元動画の音声（音量維持）
                 const mainAudioChain = afadeParts.length > 0 ? afadeParts.join(',') : 'volume=1.0';
                 complexParts.push(`[0:a]${mainAudioChain}[a0]`);
 
-                // 追加音声トラック
+                // 追加音声トラック（音量を抑制）
                 for (let i = 0; i < validAudioTracks.length; i++) {
                     const t = validAudioTracks[i];
                     const inputIdx = i + 1;
                     const delayMs = Math.round((t.startTime || 0) * 1000);
-                    const vol = t.volume ?? 1.0;
+                    const vol = (t.volume ?? 1.0) * 0.3;
                     complexParts.push(`[${inputIdx}:a]adelay=${delayMs}|${delayMs},volume=${vol}[a${inputIdx}]`);
                 }
 
-                // amixで全音声を合成
+                // amixで全音声を合成（normalize無効 + 元動画の重みを大きく）
+                const weights = ["10", ...validAudioTracks.map(() => "1")].join(" ");
                 const amixInputs = Array.from({ length: validAudioTracks.length + 1 }, (_, i) => `[a${i}]`).join('');
-                complexParts.push(`${amixInputs}amix=inputs=${validAudioTracks.length + 1}:duration=longest:dropout_transition=0[aout]`);
+                complexParts.push(`${amixInputs}amix=inputs=${validAudioTracks.length + 1}:duration=longest:dropout_transition=0:weights=${weights}:normalize=0[aout]`);
 
                 filterArg = `-filter_complex "${complexParts.join(';')}"`;
                 mapArgs = '-map "[vout]" -map "[aout]"';
