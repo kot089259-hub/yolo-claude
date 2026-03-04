@@ -3967,7 +3967,7 @@
           <label>開始(s)</label>
           <input type="number" value="${t.startTime}" step="0.1" min="0" style="width:60px" onchange="audioTracks[${i}].startTime=parseFloat(this.value)">
           <label>音量 ${Math.round((t.volume || 1) * 100)}%</label>
-          <input type="range" value="${t.volume}" step="0.05" min="0" max="2" style="width:80px" oninput="audioTracks[${i}].volume=parseFloat(this.value); displayAudioTracks()">
+          <input type="range" value="${t.volume}" step="0.01" min="0" max="1" style="width:100%;max-width:200px" oninput="audioTracks[${i}].volume=parseFloat(this.value); displayAudioTracks()">
           <button class="btn-icon btn-delete" onclick="audioTracks.splice(${i},1); displayAudioTracks()" title="削除">✕</button>
         </div>
       `).join('');

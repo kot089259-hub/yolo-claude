@@ -605,7 +605,7 @@ export function prepareFFmpegRender(opts: RenderOptions): { command: string; ass
 
             const delayLabel = `adelay${i}`;
             const delayMs = Math.round(track.startTime * 1000);
-            filterParts.push(`[${inputIdx}:a]adelay=${delayMs}|${delayMs},volume=${track.volume}[${delayLabel}]`);
+            filterParts.push(`[${inputIdx}:a]adelay=${delayMs}|${delayMs},volume=${track.volume * 0.4}[${delayLabel}]`);
             audioInputs.push(`[${delayLabel}]`);
             inputIdx++;
         }
