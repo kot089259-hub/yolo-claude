@@ -3311,6 +3311,11 @@
     // 圧縮をキューに入れて順次実行（FFmpeg.wasmは同時1つのみ）
     // onProgress: (pct: number) => void — 進捗コールバック（バックグラウンド処理用）
     function compressVideo(file, slotIndex) {
+      // ローカル実行時は圧縮スキップ（localhost宛なのでファイルサイズ関係なし）
+      if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') {
+        updateSlotStep(slotIndex, 'compress', { state: 'done', visible: true, detail: 'ローカル実行のため圧縮スキップ', progress: 100, stats: '' });
+        return Promise.resolve(file);
+      }
       const COMPRESS_THRESHOLD = 50 * 1024 * 1024;
       const COMPRESS_MAX = 500 * 1024 * 1024;
       if (file.size <= COMPRESS_THRESHOLD) return Promise.resolve(file);
