@@ -68,9 +68,12 @@ fi
 
 # ── 環境変数読み込み ──
 if [ -f ".env" ]; then
-    set -a
-    source .env
-    set +a
+    while IFS='=' read -r key value; do
+        [[ -z "$key" || "$key" =~ ^# ]] && continue
+        key=$(echo "$key" | tr -d '[:space:]' | tr -d '\r' | sed 's/\xEF\xBB\xBF//')
+        value=$(echo "$value" | tr -d '\r' | sed 's/\xEF\xBB\xBF//')
+        export "$key=$value"
+    done < .env
 fi
 
 # ── 起動 ──
