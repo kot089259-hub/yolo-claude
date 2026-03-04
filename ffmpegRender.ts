@@ -594,11 +594,10 @@ export function prepareFFmpegRender(opts: RenderOptions): { command: string; ass
         inputIdx++;
     }
 
-    // オーディオミックス
+    // オーディオミックス（amergeベース：元動画の音声を維持しつつ追加音声を重ねる）
     let audioOut = "0:a";
     if (audioTracks.length > 0) {
-        filterParts.push(`[0:a]volume=5.0[origaudio]`);
-        const audioInputs = ["[origaudio]"];
+        let currentAudio = "0:a";
         for (let i = 0; i < audioTracks.length; i++) {
             const track = audioTracks[i];
             const audioPath = path.join(opts.publicDir, track.filename);
@@ -606,14 +605,16 @@ export function prepareFFmpegRender(opts: RenderOptions): { command: string; ass
 
             const delayLabel = `adelay${i}`;
             const delayMs = Math.round(track.startTime * 1000);
-            filterParts.push(`[${inputIdx}:a]adelay=${delayMs}|${delayMs},volume=${track.volume * 0.2}[${delayLabel}]`);
-            audioInputs.push(`[${delayLabel}]`);
+            const vol = track.volume * 0.2;
+            filterParts.push(`[${inputIdx}:a]adelay=${delayMs}|${delayMs},volume=${vol}[${delayLabel}]`);
+
+            // 元音声と追加音声をamergeで合成し、stereo→monoダウンミックスで均等化
+            const mergeOut = `amrg${i}`;
+            filterParts.push(`[${currentAudio}][${delayLabel}]amerge=inputs=2,pan=stereo|c0<c0+c2|c1<c1+c3[${mergeOut}]`);
+            currentAudio = mergeOut;
             inputIdx++;
         }
-        if (audioInputs.length > 1) {
-            audioOut = "aout";
-            filterParts.push(`${audioInputs.join("")}amix=inputs=${audioInputs.length}:duration=first:normalize=0[${audioOut}]`);
-        }
+        audioOut = currentAudio;
     }
 
     // 速度変更時のオーディオ
