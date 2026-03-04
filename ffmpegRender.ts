@@ -606,7 +606,7 @@ export function prepareFFmpegRender(opts: RenderOptions): { command: string; ass
 
             const delayLabel = `adelay${i}`;
             const delayMs = Math.round(track.startTime * 1000);
-            const vol = track.volume * 0.2;
+            const vol = track.volume * 0.05;
             filterParts.push(`[${inputIdx}:a]adelay=${delayMs}|${delayMs},volume=${vol}[${delayLabel}]`);
 
             // 元音声と追加音声をamergeで合成し、stereo→monoダウンミックスで均等化
