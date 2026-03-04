@@ -77,13 +77,21 @@ else
 fi
 
 # ── 6. APIキー設定 ──
-if [ "$API_KEY" != "__OPENAI_API_KEY__" ] && [ -n "$API_KEY" ]; then
-    echo "OPENAI_API_KEY=$API_KEY" > .env
-    echo "✅ APIキー: 設定済み"
-elif [ -f ".env" ]; then
+if [ -f ".env" ]; then
     echo "✅ APIキー: 設定済み"
 else
-    echo "⚠️  APIキー未設定（文字起こし機能は使えません）"
+    echo ""
+    echo "📝 APIキーを入力してください（送られてきたキーを貼り付けてEnter）"
+    echo "   スキップする場合はそのままEnter（文字起こし以外は使えます）"
+    echo ""
+    printf "   APIキー: "
+    read -r api_key
+    if [ -n "$api_key" ]; then
+        echo "OPENAI_API_KEY=$api_key" > .env
+        echo "✅ APIキー設定完了"
+    else
+        echo "⏭️  スキップしました"
+    fi
 fi
 
 # ── 環境変数読み込み ──
