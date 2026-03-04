@@ -597,7 +597,8 @@ export function prepareFFmpegRender(opts: RenderOptions): { command: string; ass
     // オーディオミックス
     let audioOut = "0:a";
     if (audioTracks.length > 0) {
-        const audioInputs = ["[0:a]"];
+        filterParts.push(`[0:a]volume=3.0[origaudio]`);
+        const audioInputs = ["[origaudio]"];
         for (let i = 0; i < audioTracks.length; i++) {
             const track = audioTracks[i];
             const audioPath = path.join(opts.publicDir, track.filename);
