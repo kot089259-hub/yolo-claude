@@ -4,11 +4,12 @@
 # このファイルをダブルクリックするだけでOK！
 # =============================================
 
-set -e
-
 REPO_URL="https://github.com/kot089259-hub/yolo-claude.git"
 INSTALL_DIR="$HOME/video-editor"
 API_KEY="__OPENAI_API_KEY__"
+
+# エラー時にウィンドウを閉じない
+trap 'echo ""; echo "❌ エラーが発生しました。このウィンドウのメッセージを確認してください。"; echo "Enterを押して終了..."; read' ERR
 
 clear
 echo ""
@@ -59,7 +60,7 @@ fi
 if [ -d "$INSTALL_DIR" ]; then
     echo "📥 最新版に更新しています..."
     cd "$INSTALL_DIR"
-    git pull origin main
+    git pull origin main || true
 else
     echo "📥 ダウンロードしています..."
     git clone "$REPO_URL" "$INSTALL_DIR"
@@ -85,15 +86,26 @@ else
     echo "⚠️  APIキー未設定（文字起こし機能は使えません）"
 fi
 
+# ── 環境変数読み込み ──
+if [ -f ".env" ]; then
+    set -a
+    source .env
+    set +a
+fi
+
 # ── 起動 ──
 echo ""
 echo "========================================="
-echo "  🚀 起動完了！"
+echo "  🚀 起動中..."
 echo "  ブラウザが自動で開きます"
 echo "  終了するにはこのウィンドウを閉じてください"
 echo "========================================="
 echo ""
 
 sleep 2 && open http://localhost:3001 &
-export $(cat .env 2>/dev/null | grep -v '^#' | xargs) 2>/dev/null
 npx tsx server.ts
+
+# サーバーが停止した場合
+echo ""
+echo "サーバーが停止しました。Enterを押して終了..."
+read
