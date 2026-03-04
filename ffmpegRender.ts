@@ -597,7 +597,7 @@ export function prepareFFmpegRender(opts: RenderOptions): { command: string; ass
     // オーディオミックス
     let audioOut = "0:a";
     if (audioTracks.length > 0) {
-        filterParts.push(`[0:a]volume=3.0[origaudio]`);
+        filterParts.push(`[0:a]volume=5.0[origaudio]`);
         const audioInputs = ["[origaudio]"];
         for (let i = 0; i < audioTracks.length; i++) {
             const track = audioTracks[i];
@@ -606,7 +606,7 @@ export function prepareFFmpegRender(opts: RenderOptions): { command: string; ass
 
             const delayLabel = `adelay${i}`;
             const delayMs = Math.round(track.startTime * 1000);
-            filterParts.push(`[${inputIdx}:a]adelay=${delayMs}|${delayMs},volume=${track.volume * 0.4}[${delayLabel}]`);
+            filterParts.push(`[${inputIdx}:a]adelay=${delayMs}|${delayMs},volume=${track.volume * 0.2}[${delayLabel}]`);
             audioInputs.push(`[${delayLabel}]`);
             inputIdx++;
         }
